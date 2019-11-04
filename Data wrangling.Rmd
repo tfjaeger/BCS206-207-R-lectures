@@ -31,6 +31,19 @@ library("plotly")     # for interactive plots
 theme_set(theme_bw())
 ```
 
+# Goals for next two weeks
+
+ * Thinking about workflow in R: 
+   * Version control
+   * R Markdown
+  
+ * Data wrangling: Turning the data into the form you need (*dplyr*)
+ * Data visualization:
+   * General principles
+   * How to plot in R (*ggplot*, *plotly*)
+ 
+We only have a relatively short time, so we will focus on learning what tools are available and on *examples* of use (rather than an in-depth tutorial). There are great online tutorials and cheatsheets that contain further information. 
+ 
 # Preliminaries
 
 ## Version control
