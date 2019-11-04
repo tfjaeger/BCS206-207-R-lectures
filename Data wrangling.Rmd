@@ -8,10 +8,10 @@ output:
     number_sections: yes
     toc: yes
     toc_depth: 3
-  word_document:
-    toc: yes
   html_document:
     df_print: paged
+    toc: yes
+  word_document:
     toc: yes
 ---
 
@@ -22,10 +22,11 @@ knitr::opts_chunk$set(
 ```
 
 ```{r libraries, include = F}
-library("tidyverse")
-library("magrittr")
-library("R.matlab")
-library("cowplot")
+library("tidyverse")  # dplyr, ggplot2, and more from the tidyverse
+library("magrittr")   # for pipes
+library("R.matlab")   # for interacting with MatLab
+library("cowplot")    # for combining figures
+library("plotly")     # for interactive plots
 
 theme_set(theme_bw())
 ```
@@ -55,8 +56,7 @@ R and RStudio support reproducibility oriented literate coding via Sweave and Kn
 
 The *R* libraries *dplyr* provide us with efficient ways to transform ('wrangle') our data tables. The library *magrittr* let's us concatenate these operations in transparent and easy to read code. 
 
-## Dplyr's verbs
-Dplyr has 'verbs' like filter, select, summarize, mutate, transmute, etc. to let use conduct operations on our data, and reshape the data frame into the format we need. Consider the following data.frame from an experiment with a 2AFC task in three within-subject conditions (A, B, C):
+## An example data set
 
 ```{r, include=FALSE}
 # Let's make some fake data
@@ -64,29 +64,46 @@ d =
   crossing(
     condition = c("A","B","C"),
     trial = 1:64,
-    subject = 1:10
+    subject = 1:42
   ) %>%
   mutate(
     muLogOddsCorrect = qlogis(case_when(
-      condition == "A" ~ .3,
-      condition == "B" ~ .6,
-      condition == "C" ~ .75
-    ))
+      condition == "A" ~ .5,
+      condition == "B" ~ .61,
+      condition == "C" ~ .88
+    )),
+    muLogRT = case_when(
+      condition == "A" ~ 6.2,
+      condition == "B" ~ 6.2,
+      condition == "C" ~ 7.3
+    )
   ) %>%
   group_by(subject) %>%
   mutate(
-    muLogOddsCorrect.bySubject = rnorm(1, 0, 1.5)
+    muLogOddsCorrect.bySubject = rnorm(1, 0, 1.5),
+    muLogRT.bySubject = rnorm(1, 0, 0.3)
   ) %>%
   rowwise() %>%
   mutate(
-    correct = rbinom(1, 1, plogis(muLogOddsCorrect + muLogOddsCorrect.bySubject))
+    correct = rbinom(1, 1, plogis(muLogOddsCorrect + muLogOddsCorrect.bySubject)),
+    RT = round(exp(rnorm(1, muLogRT + muLogRT.bySubject - .2 * correct, .05)), 3)
   ) %>%
-  as_tibble()
-
-d
+  as_tibble() %>%
+  select(-starts_with("mu")) %>%
+  mutate_at(c("condition", "subject"), factor)
 ```
 
-We can calculate the proportion correct by using summarise. 
+We will illustrate the use of *dplyr* with the following data from an experiment with a 2AFC task in three within-subject conditions (A, B, C), for which we have extracted correctness (1 = correct; 0 = incorrect) and reaction times (RT):
+
+```{r, echo=TRUE}
+summary(d)
+
+glimpse(d)
+```
+
+
+## Dplyr's verbs
+Dplyr has 'verbs' like filter, select, summarize, mutate, transmute, etc. to let use conduct operations on our data, and reshape the data frame into the format we need. We can use dplyr, for example, to calculate the proportion correct answers in our experiment by using *summarise*. 
 
 ```{r, echo=T}
 summarise(d, meanCorrect = mean(correct))
@@ -134,17 +151,55 @@ d %>%
   summarise(meanCorrect = mean(correct))
 ```
 
-# Problem sets
+# Exercises
 
- * How would you calculate the by-subject averages for all three conditions?
- * How could you also calculate the by-subject standard deviations around those averages?
- * How could you attach this information (the averages and SDs) to each row of the present data.frame?
+How can we: 
 
-# An example: Haefner group
+ * View the entire data set? (*View*)
+ 
+ * Calculate the by-subject averages for all three conditions? (*group_by*, *summarise*)
+ 
+ * Calculate the by-subject standard deviations around those averages? (*group_by*, *summarise*)
+ 
+ * Attach this information (the averages and SDs) to each row of the present data.frame? (*group_by*, *mutate*)
+ 
+ * Determine whether RTs were on average faster for correct, as compared to incorrect, trials?
+ 
+ * Add a column for log-transformed RTs to the data set?
+ 
+ * Remove the old column for raw RTs? (*select*)
+ 
+ * Sort the data by log-transformed reaction times? (*arrange*)
 
-This group seeks to replicate [Herce Castanon et al. (2019)](https://www.nature.com/articles/s41467-019-09330-7).
+Say we further have an additional data frame with information about our subjects:
 
-![Figure 2 from Herce Castanon et al. (2019)](./figures/HerceCastanonFigure2.png)
+```{r joining, echo=FALSE}
+# Let's make some fake subject data.
+d.subj = d %>%
+  select(subject) %>%
+  distinct() %>%
+  rowwise() %>%
+  mutate(
+    gender = factor(ifelse(rbinom(1,1,.5) == 1, "female", "male")),
+    age = round(rnorm(1, 20, 1), 0)
+  )
+
+print(d.subj)
+```  
+
+ * How can we join the information from the two data sources together? (*left_join*)
+
+
+
+
+
+
+
+# Combining data wrangling and visualization: an example from the Haefner group
+
+This group seeks to replicate [Herce Castañón et al. (2019)](https://www.nature.com/articles/s41467-019-09330-7).
+
+![Figure 2 from Herce Castañón et al. (2019)](./figures/HerceCastanonFigure2.png)
 
 ## Design
 
@@ -218,7 +273,8 @@ To instead get a summary of the data:
 summary(d.haefner)
 ```
 
-## Figure 2
+## Figure 2 from Herce Castañón et al.
+
 
 ### Panel A
 
@@ -284,7 +340,7 @@ p2 = d.haefner %>%
     values = c("red", "black", "blue")
   ) 
 
-plot(p2)
+p2
 ```
 
 
@@ -317,7 +373,7 @@ p1 = d.haefner %>%
     aes(x = condition,
         y = accuracy)
   ) +
-  stat_summary(fun.y = mean, geom="bar", position=p, fill = "blue", color = NA) +
+  stat_summary(fun.y = mean, geom="bar", position=p, fill = "blue", alpha = .5, color = NA) +
   stat_summary(fun.data = mean_cl_boot, geom = "linerange", position=p) +
   scale_x_discrete("") +
   scale_y_continuous("Proportion correct") +
@@ -358,15 +414,17 @@ p2 = d.haefner %>%
   ) +
   theme(
     panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank()
+    panel.grid.minor = element_blank(),
+    legend.position = "top"
   )
 
 plot_grid(
   plotlist = list(p1, p2),
   nrow = 1,
-  rel_widths = c(.25, .75),
+  rel_widths = c(.30, .70),
   labels = c("a", "b"),
-  align = "hv"
+  align = "hv",
+  axis = "bt"
 )
 ```
 
