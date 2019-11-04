@@ -1,7 +1,7 @@
 ---
-title: 'Using dplyr: Linking psychometric and neurometric data'
-author: "Florian Jaeger"
-date: "9/8/2019"
+title: 'Data Wrangling 101'
+author: "for BCS 206"
+date: "Fall 2019"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -17,7 +17,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  echo = FALSE, results = "markup", 
+  echo = FALSE, results = "markup", warning = FALSE,
   fig.align = "center", fig.width = 6.5)
 ```
 
@@ -25,6 +25,7 @@ knitr::opts_chunk$set(
 library("tidyverse")
 library("magrittr")
 library("R.matlab")
+library("cowplot")
 
 theme_set(theme_bw())
 ```
@@ -133,6 +134,11 @@ d %>%
   summarise(meanCorrect = mean(correct))
 ```
 
+# Problem sets
+
+ * How would you calculate the by-subject averages for all three conditions?
+ * How could you also calculate the by-subject standard deviations around those averages?
+ * How could you attach this information (the averages and SDs) to each row of the present data.frame?
 
 # An example: Haefner group
 
@@ -281,9 +287,9 @@ p2 = d.haefner %>%
 plot(p2)
 ```
 
-Let's shade the facets of interest:
 
-```{r, warning=FALSE}
+```{r, include=FALSE}
+# if one wanted to share the facets of interest
 p2 +
   geom_rect(
     data = d.haefner %>% 
@@ -300,20 +306,22 @@ p2 +
   )
 ```
 
-Or if we want something closer to Panel A and B:
+### Panel A and B together
 
-```{r}
+```{r, fig.width=10, fig.height=5}
 p1 = d.haefner %>%
   filter(condition != "", cue == 0) %>%
-  mutate(condition = factor(condition, levels = c("baseline", "low contrast", "high variance"))) %>%
+  mutate(condition = factor(condition, 
+                            levels = c("baseline", "low contrast", "high variance"))) %>%
   ggplot(
     aes(x = condition,
         y = accuracy)
   ) +
   stat_summary(fun.y = mean, geom="bar", position=p, fill = "blue", color = NA) +
   stat_summary(fun.data = mean_cl_boot, geom = "linerange", position=p) +
-  scale_x_discrete() +
+  scale_x_discrete("") +
   scale_y_continuous("Proportion correct") +
+  coord_cartesian(ylim = c(0,1)) +
   theme(
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank()
@@ -340,8 +348,8 @@ p2 = d.haefner %>%
               se = FALSE, # remove to see CIs
               method.args = list(family = binomial)) +
   facet_wrap(~ condition) +
-  scale_x_continuous("mean orientation\n(relative to horizontal)") +
-  scale_y_continuous("Proportion of\nCW choices") +
+  scale_x_continuous("mean orientation (relative to horizontal)") +
+  scale_y_continuous("Proportion of CW choices") +
   scale_color_manual(
     "Cue",
     breaks = c(-1,0,1),
@@ -357,7 +365,8 @@ plot_grid(
   plotlist = list(p1, p2),
   nrow = 1,
   rel_widths = c(.25, .75),
-  labels = c("a", "b")
+  labels = c("a", "b"),
+  align = "hv"
 )
 ```
 
