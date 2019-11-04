@@ -3,6 +3,8 @@ title: 'Data Wrangling 101'
 author: "for BCS 206"
 date: "Fall 2019"
 output:
+  word_document:
+    toc: yes
   pdf_document:
     latex_engine: xelatex
     number_sections: yes
@@ -10,8 +12,6 @@ output:
     toc_depth: 3
   html_document:
     df_print: paged
-    toc: yes
-  word_document:
     toc: yes
 ---
 
