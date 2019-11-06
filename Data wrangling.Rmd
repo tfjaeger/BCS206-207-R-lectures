@@ -226,10 +226,6 @@ d.rucci = read_csv("./data/Rucci/Michele Good Data 15-12-00.csv") %>%
 
 summary(d.rucci)
 
-d.rucci %>%
-  filter(session_idx > 0) %>%
-  View()
-
 d.rucci %<>%
   left_join(
     d.rucci %>%
