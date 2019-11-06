@@ -204,7 +204,14 @@ print(d.subj)
  * How can we join the information from the two data sources together? (*left_join*)
 
 
+```{r}
+d.subj
+d %<>%
+  left_join(d.subj)
 
+d
+
+```
 
 
 # Case Study I: (Rucci group)
@@ -215,9 +222,13 @@ print(d.subj)
 
 ```{r, echo=FALSE}
 d.rucci = read_csv("./data/Rucci/Michele Good Data 15-12-00.csv") %>%
-  arrange(SMI_timestamp, Unity_timestamp)
+  arrange(session_idx, Unity_timestamp)
 
 summary(d.rucci)
+
+d.rucci %>%
+  filter(session_idx > 0) %>%
+  View()
 
 d.rucci %<>%
   left_join(
@@ -227,6 +238,10 @@ d.rucci %<>%
       mutate(prev_stimulus_deg = lag(stimulus_deg, default = 0))
   ) %>%
   mutate(stimulus_deg_delta = stimulus_deg - prev_stimulus_deg)
+
+d.rucci %>%
+  mutate(stimulus_deg_delta = factor(stimulus_deg_delta)) %>%
+  summary()
 ```
 
 ## Plotting the data
@@ -235,12 +250,12 @@ d.rucci %<>%
  
 ```{r}
 d.rucci %>%
-  ggplot(aes(x = gaze_l_x, y = gaze_r_x, color = factor(stimulus_deg))) +
+  ggplot(aes(x = gaze_l_x, y = gaze_r_x, color = factor(stimulus_deg_delta))) +
   geom_hline(yintercept = 0, color = "gray") +
   geom_vline(xintercept = 0, color = "gray") +
   geom_point(alpha = .1) +
   scale_color_discrete() +
-  facet_wrap(~stimulus_deg)
+  facet_wrap(~stimulus_deg_delta)
 ```
 
 ### Plotting left and right eye's x and y coordinates by stimulus degree
@@ -352,8 +367,7 @@ p = position_dodge(.9)
 p1 = d.haefner %>%
   ggplot(
     aes(x = factor(contrast),
-        y = accuracy,
-        fill = factor(variance))
+        y = accuracy)
   ) +
   stat_summary(fun.y = mean, geom="bar", position=p) +
   stat_summary(fun.data = mean_cl_boot, geom = "linerange", position=p) +
@@ -499,9 +513,9 @@ plot_grid(
 
 ## Load data from Excel files
 ```{r}
-d.huxlin = read.xlsx(xlsxFile = "./data/Huxlin/pattern_test.xlsx", sheet = "RHN 1")
-
-summary(d.huxlin)
+# d.huxlin = read.xlsx(xlsxFile = "./data/Huxlin/pattern_test.xlsx", sheet = "RHN 1")
+# 
+# summary(d.huxlin)
 ```
 # Session info
 ```{r session_info, echo=FALSE, results='markup'}
