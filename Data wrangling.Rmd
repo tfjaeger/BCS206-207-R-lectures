@@ -216,47 +216,53 @@ d
 
 # Case Study I: (Rucci group)
 
+This study seeks to determine whether myopia affects fundamental properties of eye-movments. To this end, we compare typical and myopic subjects in a eye-movement task.
+
+Subjects moved their eyes horizontally to target fixation points. We are interested in three dependent variables for each trial:
+
+ * How long did it take the subject to move their eyes to the target? (reaction time)
+ * How fast were their eye-movements during the fastest point of the trial? (peak velocity)
+ * How long did it take to reach this peak velocity? (time to peak velocity)
+
+None of these variables are available in the raw data, and we will have to infer / create them from the raw data.
+
+
+
 ## Design
+
+Targets are presented at seven locations (*stimulus_deg* is one of -30, -20, -10, 0, 10, 20, 30). The total degree of horizontal movement depends on the stimulus on the previous trial, and the new stimulus on the current trial. For example, if the previous trial had a stimulus degree of -20 and the present trial has a stimulus degree of 20, that corresponds to a movement of positive 40 degrees.
 
 ## Loading data from .csv file
 
 ```{r, echo=FALSE}
 d.rucci = read_csv("./data/Rucci/Michele Good Data 15-12-00.csv") %>%
-  arrange(session_idx, Unity_timestamp)
+  # Let's rename the session_idx variable into sth that's easier to remember (trial)
+  rename(trial = session_idx) %>%
+  # Let's (for now) remove all the variables about head position and rotation.
+  select(-starts_with("head")) %>%
+  # Let's sort the the data by trial, then time stamps (in increasing order)
+  arrange(trial, Unity_timestamp, SMI_timestamp)
 
 summary(d.rucci)
-
-d.rucci %<>%
-  left_join(
-    d.rucci %>%
-      group_by(session_idx) %>%
-      summarise(stimulus_deg = first(stimulus_deg)) %>%
-      mutate(prev_stimulus_deg = lag(stimulus_deg, default = 0))
-  ) %>%
-  mutate(stimulus_deg_delta = stimulus_deg - prev_stimulus_deg)
-
-d.rucci %>%
-  mutate(stimulus_deg_delta = factor(stimulus_deg_delta)) %>%
-  summary()
 ```
 
-## Plotting the data
+### Sanity check: Plotting left and right eye's x coordinate by stimulus degree
 
-### Plotting left and right eye's x coordinate by stimulus degree
+If the left and right eye are generally tracked well, then we should see that most of the data points fall onto the 45 degree diagonal when we plot the left and right eye's x-position on the x-axis and y-axis, respectively:
  
 ```{r}
 d.rucci %>%
-  ggplot(aes(x = gaze_l_x, y = gaze_r_x, color = factor(stimulus_deg_delta))) +
+  ggplot(aes(x = gaze_l_x, y = gaze_r_x, color = factor(stimulus_deg))) +
   geom_hline(yintercept = 0, color = "gray") +
   geom_vline(xintercept = 0, color = "gray") +
   geom_point(alpha = .1) +
   scale_color_discrete() +
-  facet_wrap(~stimulus_deg_delta)
+  facet_wrap(~stimulus_deg)
 ```
 
-### Plotting left and right eye's x and y coordinates by stimulus degree
+### Sanity check: Plotting left and right eye's x and y coordinates by stimulus degree
 
-For this we first need to transform that data so that we have separate rows for gaze information about the left and right eye. Then we can plot the data in a way very similar to the plot in the previous section. 
+If the subject did the task, we should see that eyes primarily move along the x-axis, rather than, for example, the y-axis. For this we first need to transform that data so that we have separate rows for gaze information about the left and right eye. Then we can plot the data in a way very similar to the plot in the previous section. 
 
 ```{r}
 d.rucci %>%
@@ -271,6 +277,119 @@ d.rucci %>%
   scale_color_discrete() +
   facet_grid(stimulus_deg ~ eye)
 ```
+
+
+
+## Getting information about previous trial's stimulus
+
+Let's calculate the change in degrees from the previous stimulus to the present stimulus. We will call this variable *stimulus_deg_delta*. This variable tells us how much and in which direction subjects had to move their eyes on the present trial.
+
+```{r}
+d.rucci %<>%
+  left_join(
+    d.rucci %>%
+      group_by(trial) %>%
+      summarise(stimulus_deg = first(stimulus_deg)) %>%
+      mutate(prev_stimulus_deg = lag(stimulus_deg, default = 0))
+  ) %>%
+  mutate(stimulus_deg_delta = stimulus_deg - prev_stimulus_deg)
+
+d.rucci
+```
+
+
+### Plot current eye position based on stimulus degree the previous stimulus degree
+
+This plot let's us check whether subjects were doing the task. Each row shows one target (*stimulus_deg*) and each column shows where the eye-movement started off (*prev_stimulus_deg*). Color indicates the total change in stimulus degree. Take for example the first row: we see that the subject's fixation seems to always end in the same point (-.5), corresponding to the stimulus degree of the present trial (-30). Where the eye-movements start differs from column to column, depending on the stimulus degree of the previous trial.
+
+```{r, fig.width=11, fig.height=11}
+d.rucci %>%
+  ggplot(aes(x = gaze_l_x, y = gaze_r_x, color = factor(stimulus_deg_delta))) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_vline(xintercept = 0, color = "gray") +
+  geom_point(alpha = .1) +
+  scale_x_continuous("x-position (left eye)") +
+  scale_y_continuous("x-position (right eye") +
+  scale_color_discrete("Change in stimulus degree") +
+  facet_grid(stimulus_deg~prev_stimulus_deg, labeller = label_both) +
+  theme(legend.position = "bottom")
+```
+
+
+
+## Getting information about reaction time, velocity, peak velocity, and time to peak velocity
+
+We can calculate the speed of the eye movement at each point in time by deviding the distance traveled by the time that has passed. We can do so either along just one dimension (say x) or along any combination of dimensions. Here, we calculate the distance traveled, and speed, along the x-axis. 
+
+```{r}
+d.rucci %<>%
+  group_by(trial) %>%
+  # We are removing the SMI time stamp and then only keep rows that are distinct with
+  # regard to the Unity time stamp, so as to avoid deriving infinitely large eye 
+  # movement velocities. Other solutions might be preferred.
+  select(-SMI_timestamp) %>%
+  distinct() %>%
+  mutate(
+    gaze_l_x_distance = gaze_l_x - lag(gaze_l_x),
+    gaze_r_x_distance = gaze_r_x - lag(gaze_r_x),
+    # Notice how these variables are created in the order we list them within the
+    # call to mutate(). Therefore the definition of the velocity variable can refer
+    # to the distance variable we have just created.
+    gaze_l_x_velocity = gaze_l_x_distance / (Unity_timestamp - lag(Unity_timestamp)),
+    gaze_r_x_velocity = gaze_r_x_distance / (Unity_timestamp - lag(Unity_timestamp))
+  )
+
+d.rucci
+```
+
+Next, we also determine the peak velocity, time to peak velocity, and reaction time within each trial. We can summarize the data to one row per trial. Notice how we now only have 97 rows---one for each trial  (plus one for the 0th trial).
+
+If we wanted to keep around all the within-trial msec-by-msec information, we would simply use mutate() instead of summarise(). 
+
+```{r}
+# To determine when the distance between the intended fixation target and the actual
+# position of the eye is smallest, we need to translate the gaze position information
+# (gaze_l|r_x) into the same scale that is used to express stimulus_deg. The following
+# function will do this. 
+# *********** For now it just returns that same value that it's handed. BUT THIS WILL 
+# NEED TO BE CHANGED. ************
+gaze_to_stimulus = function(x) {
+  return(x)
+}
+
+d.rucci.byTrial = d.rucci %>%
+   # Addding trial and all other relevant information that we want to keep to the 
+  # grouping.
+  group_by(trial, stimulus_deg, stimulus_deg_delta) %>%
+  summarise(
+    # Notice that we're still using the grouped data. Therefore, taking the max() 
+    # of the gaze velocity returns the maximum velocity *within the current trial*.
+    # (the argument na.rm = T makes sure that we ignore non-defined [NA] values 
+    # during the calculation of the maximum; the same argument works for all similar
+    # functions like min, mean, sd, etc.)
+    gaze_l_x_peak_velocity = max(gaze_l_x_velocity, na.rm = T),
+    gaze_r_x_peak_velocity = max(gaze_r_x_velocity, na.rm = T),
+    gaze_l_time_to_peak_velocity = 
+      min(Unity_timestamp[which(gaze_l_x_velocity == gaze_l_x_peak_velocity)]) - 
+      min(Unity_timestamp),
+    gaze_r_time_to_peak_velocity = 
+      min(Unity_timestamp[which(gaze_r_x_velocity == gaze_r_x_peak_velocity)]) - 
+      min(Unity_timestamp),
+    gaze_l_RT = 
+      min(Unity_timestamp[which(gaze_to_stimulus(gaze_l_x) - stimulus_deg == 
+              min(gaze_to_stimulus(gaze_l_x) - stimulus_deg))]) - min(Unity_timestamp),
+    gaze_r_RT = 
+      min(Unity_timestamp[which(gaze_to_stimulus(gaze_r_x) - stimulus_deg == 
+              min(gaze_to_stimulus(gaze_r_x) - stimulus_deg))]) - min(Unity_timestamp)
+  )
+
+d.rucci.byTrial
+```
+
+
+
+
+
 
 # Case Study II: visual decision-making (Haefner group)
 
