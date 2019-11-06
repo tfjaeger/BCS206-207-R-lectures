@@ -3,13 +3,13 @@ title: 'Data Wrangling 101'
 author: "for BCS 206"
 date: "Fall 2019"
 output:
-  word_document:
-    toc: yes
   pdf_document:
     latex_engine: xelatex
     number_sections: yes
     toc: yes
     toc_depth: 3
+  word_document:
+    toc: yes
   html_document:
     df_print: paged
     toc: yes
@@ -25,6 +25,7 @@ knitr::opts_chunk$set(
 library("tidyverse")  # dplyr, ggplot2, and more from the tidyverse
 library("magrittr")   # for pipes
 library("R.matlab")   # for interacting with MatLab
+library("openxlsx")   # for interacting with Excel
 library("cowplot")    # for combining figures
 library("plotly")     # for interactive plots
 
@@ -206,9 +207,61 @@ print(d.subj)
 
 
 
+# Case Study I: (Rucci group)
 
+## Design
 
-# Combining data wrangling and visualization: an example from the Haefner group
+## Loading data from .csv file
+
+```{r, echo=FALSE}
+d.rucci = read_csv("./data/Rucci/Michele Good Data 15-12-00.csv") %>%
+  arrange(SMI_timestamp, Unity_timestamp)
+
+summary(d.rucci)
+
+d.rucci %<>%
+  left_join(
+    d.rucci %>%
+      group_by(session_idx) %>%
+      summarise(stimulus_deg = first(stimulus_deg)) %>%
+      mutate(prev_stimulus_deg = lag(stimulus_deg, default = 0))
+  ) %>%
+  mutate(stimulus_deg_delta = stimulus_deg - prev_stimulus_deg)
+```
+
+## Plotting the data
+
+### Plotting left and right eye's x coordinate by stimulus degree
+ 
+```{r}
+d.rucci %>%
+  ggplot(aes(x = gaze_l_x, y = gaze_r_x, color = factor(stimulus_deg))) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_vline(xintercept = 0, color = "gray") +
+  geom_point(alpha = .1) +
+  scale_color_discrete() +
+  facet_wrap(~stimulus_deg)
+```
+
+### Plotting left and right eye's x and y coordinates by stimulus degree
+
+For this we first need to transform that data so that we have separate rows for gaze information about the left and right eye. Then we can plot the data in a way very similar to the plot in the previous section. 
+
+```{r}
+d.rucci %>%
+  pivot_longer(
+    cols = starts_with("gaze"),
+    names_to = c("eye", ".value"), 
+    names_pattern = "gaze_(.)_(.)") %>%
+  ggplot(aes(x = x, y = y, color = factor(stimulus_deg))) +
+  geom_hline(yintercept = 0, color = "gray") +
+  geom_vline(xintercept = 0, color = "gray") +
+  geom_point(alpha = .1) +
+  scale_color_discrete() +
+  facet_grid(stimulus_deg ~ eye)
+```
+
+# Case Study II: visual decision-making (Haefner group)
 
 This group seeks to replicate [Herce Castañón et al. (2019)](https://www.nature.com/articles/s41467-019-09330-7).
 
@@ -218,7 +271,7 @@ This group seeks to replicate [Herce Castañón et al. (2019)](https://www.natur
 
 The design of the present study crossed two levels of contrast (Low = 15%, High = 60%), 3 levels of variance (0, 4, 10), and how the trials in the block were cued (L = left, R = right, N = uncued), for a total of 2 x 3 x 3 = 18 within-subject conditions.
 
-## Loading data
+## Loading data from MatLab
 
 The data are stored in a MatLab (.mat) file. The file contains one matrix with fields: participant, exp(eriment), stimuli and response. Within each field, there is further information. The important information seems to be in the response field. Some of the important parts include:
 
@@ -441,6 +494,15 @@ plot_grid(
 )
 ```
 
+
+# Case Study III: (Huxlin group)
+
+## Load data from Excel files
+```{r}
+d.huxlin = read.xlsx(xlsxFile = "./data/Huxlin/pattern_test.xlsx", sheet = "RHN 1")
+
+summary(d.huxlin)
+```
 # Session info
 ```{r session_info, echo=FALSE, results='markup'}
 devtools::session_info()
