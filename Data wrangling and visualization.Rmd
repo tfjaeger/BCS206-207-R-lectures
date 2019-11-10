@@ -17,7 +17,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  echo = FALSE, results = "markup", warning = FALSE,
+  echo = FALSE, results = "markup", warning = FALSE, cache = TRUE,
   fig.align = "center", fig.width = 6.5)
 ```
 
@@ -216,17 +216,17 @@ d
 
 
 
-# Visualization
+# Data visualization
 
 The two main libraries in R we will be using for visualization are *ggplot2* and *plotly*. Ggplot2 provides a grammar of graphics approach to plotting. Plotly let's us interact with our data. In particular, *ggplotly()* wrapped around a ggplot2 figure let's us interact with that figure.
 
-## Ggplot2's components
+## Ggplot2's components (aesthetic mappings)
 
 In order to plot in ggplot2, we need to understand the way it thinks about visualization. There are excellent online course that explain all of this, so I focus on the basics. 
 
-At the heart of a plot is a mapping between properties of your data (i.e., column in your data frame) and abstract properties of the plot (such as x- or y-coordinates, color, fill, transparency (alpha), linetype, shape, or label information). If we call the function ggplot() in order to create a figure, we specify two arguments: the name of the data frame we want to work with, and the mapping. The latter is done through a helpful function called *aes()*---for aestethics:
+At the heart of a plot is a mapping between properties of your data (i.e., column in your data frame) and abstract properties of the plot (such as x- or y-coordinates, color, fill, transparency (alpha), linetype, shape, or label information). If we call the function ggplot() in order to create a figure, we specify two arguments: the name of the data frame we want to work with, and the mapping. The latter is done through a helpful function called *aes()*---for aesthetics:
 
-```{r, echo=T}
+```{r, echo=T, fig.height=3}
 ggplot(
   data = d,
   mapping = 
@@ -242,13 +242,13 @@ ggplot(
 #       y = RT))
 ```
 
-### Adding geometric components
+### Adding geometric components (geom_s)
 
 Notice that this by itself only returns an empty plot. That's the case because we have not yet specified how we want the abstract properties of the graph to be expressed visually. That's achieved by specifying *geom*s (for geometrics), such as points (*geom_point*), lines (*geom_line*), histograms (*geom_histogram*), lineranges (*geom_linerange*), and many similar functions (I take it you're getting th hang for the naming scheme ...). You can find all of them on the [ggplot2 cheatsheet](https://rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf). 
 
 We add such components to a plot with "+". We can also further explicitly specify any unused aesthetical properties of any geom. For example, to plot all the RTs for all three conditions with some transparency so that we see whether points cluster, plus some jittering along the x-axis (for the same reason):
 
-```{r, echo=T}
+```{r, echo=T, fig.height=3}
 p = ggplot(
   data = d,
   mapping = 
@@ -270,31 +270,17 @@ p +
 
 Alternatively, we could add a violin plot (essentially a mirrored density distribution, in this case displayed vertically on top of the points):
 
-```{r}
+```{r, fig.height=3}
 p +
   geom_violin(fill = NA, color = "blue")
 ```
 
-## Pipes
-
-Of course, we can use pipes to pipe the data frame into the plotting function, optionally after first piping the data through some additional *dplyr* operations (since the output of that entire pipe is again a data frame):
-
-```{r}
-d %>%
-  filter(condition != "A") %>%
-  ggplot(
-    aes(
-      x = condition,
-      y = RT)) +
-  geom_point(alpha = .1, position = position_jitter())
-```
-
-## Scales and coordinate systems
+### Scales and coordinate systems
 
 Sometimes we don't want to see all of the data, or we want to zoom into some ranges of our data. We can do so by explicitly specifying the x- and y-limits of our coordinate system:
 
 
-```{r}
+```{r, fig.height=3}
 p +
   geom_violin(fill = NA, color = "blue") +
   coord_cartesian(ylim = c(300,2000))
@@ -302,20 +288,65 @@ p +
 
 Note that this zooms into parts of our data without excluding any data (e.g., from the calculation of the violins, which have the same shape as above). If we want to exclude data, transform data or in other ways change the way the aesthetical mappings are interpreted, this is achieved through *scales*. For example, the following *ex*cludes all RTs below 300 and above 2000. Note how that changes the violin plots (as it should: they estimate the ditribution of RTs):
 
-```{r}
+```{r, fig.height=3}
 p +
   geom_violin(fill = NA, color = "blue") +
   scale_y_continuous(limits = c(300,2000))
 ```
 
-## Facets
+Since reaction times often have distributions that are more lognormal, rather than normal, let's update our original plot to use a log-transformed y-axis:
+
+```{r, fig.height=3}
+p = p +
+  geom_violin(fill = NA, color = "blue") +
+  scale_y_log10()
+
+plot(p)
+```
+
+### Facets
+
+If we want to have separate panels conditional on another variable, we can do so through *facet*s. There are two major facet functions, *facet_wrap* (to have panels conditional on one variable) and *facet_grid* (conditional on two variables). For example, we can have separate panels for each subject:
+
+```{r, fig.height=12}
+p +
+  geom_violin(fill = NA, color = "blue") +
+  facet_wrap(facets = ~ subject)
+```
+
+Or we could show by-subject RTs in two columns, separately for false and correct answers. Here, we do so after first sampling 6 random subjects (since the plot would otherwise be rather large).
+
+```{r, fig.height=8}
+# We can update a plot with new data using %+%
+p %+%
+  (d %>% filter(subject %in% sample(levels(subject), 6))) +
+  geom_violin(fill = NA, color = "blue") +
+  facet_grid(facets = subject ~ correct, labeller = label_both)
+```
+
+## Pipes (again)
+
+Of course, we can use pipes to pipe the data frame into the plotting function, optionally after first piping the data through some additional *dplyr* operations (since the output of that entire pipe is again a data frame):
+
+```{r, fig.height=3}
+d %>%
+  filter(condition != "A") %>%
+  ggplot(
+    aes(
+      x = condition,
+      y = RT)) +
+  geom_point(alpha = .1, position = position_jitter()) 
+```
 
 ## Exercises
 
- * Plot a histogram of the RTs by condition. Make on version where you plots the histograms in different facets, and another version where you have only one facet and use fill color to distinguish between conditions.
+ * Plot a histogram of the RTs by condition. Make on version where you plots the histograms in different facets, and another version where you have only one facet and use fill color to distinguish between conditions. (*geom_histogram*)
  * Plot the average proportion of correct answers by condition as a pointrange.
  * Do the same, but first average by subject and condition, and then plot the average (and confidence interval) of those by-subject averages of correct responses.
- * Try to make a pie chart that shows the proportion correct for the three conditions.
+ * Try to make a pie chart that shows the proportion correct for the three conditions. (*coord_polar*)
+
+
+
 
 # Case Study I: (Rucci group)
 
