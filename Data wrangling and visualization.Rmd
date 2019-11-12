@@ -817,8 +817,15 @@ d.huxlin %<>%
   # Turn x, y, dB into long format
   pivot_longer(
     -subject,
-    names_to = c(".value", "condition"),
+    names_to = c(".value", "eye"),
     names_pattern = "(.*)_(.*)"
+  ) %>%
+  # Recode eye information to be more explicit
+  mutate(
+    eye = recode(eye,
+                 "OU" = "both (OU)", 
+                 "OD" = "right (OD)", 
+                 "OS" = "left (OS)")
   ) %>%
   # Separate subject name and test session
   separate(
@@ -828,7 +835,7 @@ d.huxlin %<>%
   ) %>%
   # Omit all empty cells
   na.omit() %>%
-  mutate_at(c("subject", "condition"), factor) %>%
+  mutate_at(c("subject", "eye"), factor) %>%
   mutate(test = as.numeric(test))
 
 summary(d.huxlin)
@@ -848,8 +855,9 @@ d.huxlin %>%
   ggplot(aes(x = x, y = y, fill = dB)) +
   geom_raster() +
   scale_fill_viridis() +
-  facet_grid(subject ~ condition) + 
-  theme_minimal()
+  facet_grid(subject ~ eye) + 
+  theme_minimal() +
+  theme(legend.position = "top")
 ```
 
 
@@ -863,7 +871,7 @@ d.huxlin %>%
   filter(test %in% c(min(test), max(test))) %>%
   mutate(test = as.character(ifelse(test == 1, "first_test", "last_test"))) %>%
   pivot_wider(
-    c(subject, condition, x, y),
+    c(subject, eye, x, y),
     names_prefix = "dB.",
     names_from = test,
     values_from = c(dB)
@@ -873,9 +881,10 @@ d.huxlin %>%
   ggplot(aes(x = x, y = y, fill = dB.improvement)) +
   geom_tile() +
   scale_fill_gradient2("Improvement\n(in dB)") +
-  facet_grid(subject ~ condition) + 
+  facet_grid(subject ~ eye) + 
   theme_light() + 
   theme(
+    legend.position = "top",
     panel.background = element_rect(fill = "gray50"), 
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank())
