@@ -25,7 +25,7 @@ knitr::opts_chunk$set(
 library("tidyverse")  # dplyr, ggplot2, and more from the tidyverse
 library("magrittr")   # for pipes
 library("R.matlab")   # for interacting with MatLab
-library("openxlsx")   # for interacting with Excel
+library("readxl")     # for interacting with Excel
 library("cowplot")    # for combining figures
 library("plotly")     # for interactive plots
 
@@ -784,14 +784,104 @@ plot_grid(
 ```
 
 
-# Case Study III: (Huxlin group)
+# Case Study III: improvements in visual perception after training (Huxlin group)
+
+This study seeks to assess the improvement due to visual training after stroke-induced blindness.
+
 
 ## Load data from Excel files
-```{r}
-# d.huxlin = read.xlsx(xlsxFile = "./data/Huxlin/pattern_test.xlsx", sheet = "RHN 1")
-# 
-# summary(d.huxlin)
+```{r, warning=FALSE, message=FALSE}
+path <- "./data/Huxlin/pattern_test.xlsx"
+
+# Importing all the sheets
+d.huxlin = path %>% 
+  excel_sheets() %>% 
+  purrr::set_names() %>% 
+  map_df(~ read_excel(path = path, sheet = .x, range = "BM1:BZ150"), .id = "sheet") 
+
+# Cleaning up information 
+d.huxlin %<>%
+  # Remove empty colmns
+  select(-c(OU, OD, OS, `...5`, `...10`)) %>%
+  # Rename remaining columns
+  purrr::set_names(
+    c("subject", 
+      paste(
+        rep(c("x","y", "dB"), 3), 
+        c(rep("OU", 3), rep("OD", 3), rep("OS", 3)), 
+        sep = "_"))) %>%
+  # Filter out templates
+  filter(!(subject %in% c("TEST 1", "TEST 2", "Pattern Template"))) %>%
+  # Filter out test sessions that have parentheses around them (not sure what those are)
+  filter(grepl("^[A-Z]+ [0-9]$", subject)) %>%
+  # Turn x, y, dB into long format
+  pivot_longer(
+    -subject,
+    names_to = c(".value", "condition"),
+    names_pattern = "(.*)_(.*)"
+  ) %>%
+  # Separate subject name and test session
+  separate(
+    subject,
+    into = c("subject", "test"),
+    sep = " "
+  ) %>%
+  # Omit all empty cells
+  na.omit() %>%
+  mutate_at(c("subject", "condition"), factor) %>%
+  mutate(test = as.numeric(test))
+
+summary(d.huxlin)
 ```
+
+## Visualizing visual fields
+
+Let's visualize the first test sesion of a few example subjects. For this purpose, I randomly sample 10 subjects:
+
+```{r, fig.height=10}
+library(viridis)
+
+d.huxlin %>%
+  filter(
+    subject %in% sample(levels(subject), 10),
+    test == 1) %>%
+  ggplot(aes(x = x, y = y, fill = dB)) +
+  geom_raster() +
+  scale_fill_viridis() +
+  facet_grid(subject ~ condition) + 
+  theme_minimal()
+```
+
+
+## Visualizing improvements in visual fields over tests
+
+Now let's look at the first and last test of each subject and subtract them from each other. For that, we first need to turn the data into wide format with the first and last test next to each other.
+
+```{r, fig.height=9.5, fig.width=8}
+d.huxlin %>%
+  group_by(subject) %>%
+  filter(test %in% c(min(test), max(test))) %>%
+  mutate(test = as.character(ifelse(test == 1, "first_test", "last_test"))) %>%
+  pivot_wider(
+    c(subject, condition, x, y),
+    names_prefix = "dB.",
+    names_from = test,
+    values_from = c(dB)
+  ) %>%
+  mutate(dB.improvement = dB.last_test - dB.first_test) %>%
+  filter(subject %in% sample(levels(subject), 10)) %>%
+  ggplot(aes(x = x, y = y, fill = dB.improvement)) +
+  geom_tile() +
+  scale_fill_gradient2("Improvement\n(in dB)") +
+  facet_grid(subject ~ condition) + 
+  theme_light() + 
+  theme(
+    panel.background = element_rect(fill = "gray50"), 
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank())
+```
+
+
 # Session info
 ```{r session_info, echo=FALSE, results='markup'}
 devtools::session_info()
