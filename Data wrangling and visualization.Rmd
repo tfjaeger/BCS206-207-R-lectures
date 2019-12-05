@@ -463,7 +463,7 @@ d.rucci %<>%
   # We are removing the SMI time stamp and then only keep rows that are distinct with
   # regard to the Unity time stamp, so as to avoid deriving infinitely large eye 
   # movement velocities. Other solutions might be preferred.
-  select(-SMI_timestamp) %>%
+  select(-Unity_timestamp) %>%
   distinct() %>%
   mutate(
     gaze_l_x_distance = gaze_l_x - lag(gaze_l_x),
@@ -471,8 +471,8 @@ d.rucci %<>%
     # Notice how these variables are created in the order we list them within the
     # call to mutate(). Therefore the definition of the velocity variable can refer
     # to the distance variable we have just created.
-    gaze_l_x_velocity = gaze_l_x_distance / (Unity_timestamp - lag(Unity_timestamp)),
-    gaze_r_x_velocity = gaze_r_x_distance / (Unity_timestamp - lag(Unity_timestamp))
+    gaze_l_x_velocity = gaze_l_x_distance / (SMI_timestamp - lag(SMI_timestamp)),
+    gaze_r_x_velocity = gaze_r_x_distance / (SMI_timestamp - lag(SMI_timestamp))
   )
 
 d.rucci
@@ -489,12 +489,19 @@ If we wanted to keep around all the within-trial msec-by-msec information, we wo
 # function will do this. 
 # *********** For now it just returns that same value that it's handed. BUT THIS WILL 
 # NEED TO BE CHANGED. ************
-gaze_to_stimulus = function(x) {
-  return(x)
+gaze_to_stimulus = function(gaze) {
+  return(gaze)
+}
+
+distance_to_stimulus = function(gaze, stimulus) {
+  return(stimulus - gaze_to_stimulus(gaze))
 }
 
 d.rucci.byTrial = d.rucci %>%
-   # Addding trial and all other relevant information that we want to keep to the 
+  # Remove all time steps on which the SMI timestamp did not change (this avoids)
+  # the infinite values for peak velocity that otherwise result from division by 0.
+  filter(SMI_timestamp != lag(SMI_timestamp)) %>%
+  # Addding trial and all other relevant information that we want to keep to the 
   # grouping.
   group_by(trial, stimulus_deg, stimulus_deg_delta) %>%
   summarise(
@@ -506,17 +513,25 @@ d.rucci.byTrial = d.rucci %>%
     gaze_l_x_peak_velocity = max(gaze_l_x_velocity, na.rm = T),
     gaze_r_x_peak_velocity = max(gaze_r_x_velocity, na.rm = T),
     gaze_l_x_time_to_peak_velocity = 
-      min(Unity_timestamp[which(gaze_l_x_velocity == gaze_l_x_peak_velocity)]) - 
-      min(Unity_timestamp),
+      min(SMI_timestamp[which(gaze_l_x_velocity == gaze_l_x_peak_velocity)]) - 
+      min(SMI_timestamp),
     gaze_r_x_time_to_peak_velocity = 
-      min(Unity_timestamp[which(gaze_r_x_velocity == gaze_r_x_peak_velocity)]) - 
-      min(Unity_timestamp),
+      min(SMI_timestamp[which(gaze_r_x_velocity == gaze_r_x_peak_velocity)]) - 
+      min(SMI_timestamp),
     gaze_l_RT = 
-      min(Unity_timestamp[which(gaze_to_stimulus(gaze_l_x) - stimulus_deg == 
-              min(gaze_to_stimulus(gaze_l_x) - stimulus_deg))]) - min(Unity_timestamp),
+      min(SMI_timestamp[
+          which(
+            distance_to_stimulus(gaze_l_x, stimulus_deg) == 
+              min(distance_to_stimulus(gaze_l_x, stimulus_deg))
+          )]) - 
+      min(SMI_timestamp),
     gaze_r_RT = 
-      min(Unity_timestamp[which(gaze_to_stimulus(gaze_r_x) - stimulus_deg == 
-              min(gaze_to_stimulus(gaze_r_x) - stimulus_deg))]) - min(Unity_timestamp)
+      min(SMI_timestamp[
+          which(
+            distance_to_stimulus(gaze_r_x, stimulus_deg) == 
+              min(distance_to_stimulus(gaze_r_x, stimulus_deg))
+          )]) - 
+      min(SMI_timestamp)
   )
 
 d.rucci.byTrial
