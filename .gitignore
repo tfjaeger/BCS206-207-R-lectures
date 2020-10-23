@@ -1,4 +1,10 @@
+.DS_Store
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+*.html
+*.pptx
+*.bmp
+*_cache/
+*_files/

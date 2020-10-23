@@ -1,7 +1,7 @@
 ---
 title: 'Data Wrangling and Visualization 101'
 author: "for BCS 206"
-date: "Fall 2019"
+date: "Fall 2020"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -34,16 +34,58 @@ theme_set(theme_bw())
 
 # Goals for next two weeks
 
- * Thinking about workflow in R: 
-   * Version control
-   * R Markdown
-  
+Over the next two weeks, we will introduce you to the basics of data visualization in R (Jaeger group; taught by Florian) and MatLab (Haefner and Mitchell groups; taught by Sabya). The topics we aim to cover are the following:
+
  * Data wrangling: Turning the data into the form you need (*dplyr*)
  * Data visualization:
    * General principles
    * How to plot in R (*ggplot*, *plotly*)
+ * Documenting your code:
+   * R Markdown / MatLab notebook
+ * Introduction to confidence intervals
  
-We only have a relatively short time, so we will focus on learning what tools are available and on *examples* of use (rather than an in-depth tutorial). There are great online tutorials and cheatsheets that contain further information. 
+We only have a relatively short time, so we will focus on learning what tools are available and on *examples* of use (rather than an in-depth tutorial). There are great online tutorials and cheat sheets that contain further information. Specifically:
+
+ * **By Friday 10/30:**
+   * Send your initial data (e.g., excel, matlab, or csv file) to both Sabya and Florian (you can use Slack). If you won’t have your own data by then (which might well happen), that’s ok. In that case, please ask your PI whether they have an old data set with data similar to the one that you would be analyzing. 
+
+ * Monday 11/2:
+   * **Prepare before class:** You will receive a data set ahead of class (described below). Load it into Matlab/R and familiarize yourself with its structure. Quick primers are available online for both R (https://rstudio.cloud/learn/primers/1) and Matlab (**SABYA**), as are tutorials on how to load data. Go through them *before* class.
+   * In class, we will use that data to illustrate how we can visualize our data at various levels of summarization. 
+<!--  
+ + Whole class together: briefly introduce data
+  + DV = continuous or discretized continuous outcome
+  + IVs:
+    + 1 predictor that is underlyingly continuous but only discrete steps have been sampled from during experiment
+    + 1 predictor that is two-way categorical condition
+ + Split into R/Matlab groups: 
+  + scatter plot: 
+  + start with simple scatter plot, ignoring condition.
+  + add color
+  + deal with point overlap (jitter, transparency)
+  + add data summary (violin, boxplot)
+  + increase summarization (point range with confidence interval [do not explain yet how CI is derived])
+ + Rejoin at about 10am into whole class to discuss pros and cons of the different levels of summary.
+//-->
+     
+
+ * Wednesday 11/4: 
+   * **Prepare before class:** Load your group's data. For at least one subject in your data, try to repeat the different plots we've introduced on Monday for your own data. You will be asked to present your efforts in class (to go through your script while sharing your screen). It's ok to get stuck, but please use Slack to ask for help prior to class. 
+   * In class, we will also go through problems/errors you might have encountered while trying to create visualizations of your data. 
+<!--  
+ + Split into R/Matlab groups: 
+  + debug and go through problems with students. (have them present and then explain/help) 
+  + in particular, there might be issues with getting the data into the right format or basic R/Matlab questions.
+  + challenges could also come up because there's data from multiple subjects.
+  + SABYA: we could also try to cover legends etc. here if time permits. Then we would use the final session (a week later) to talk about what to do with repeated measures data (why we're summarizing the data down to the level of one data point per subject per condition when plotting CIs for repeated measures data, such as the "average subject" for your group.)
+ + Rejoin at about 10am into whole class to discuss what's working with the figures and what's still missing.
+//-->
+ * Monday 11/9:
+   * Summarizing variability in your data---and thus the researcher's *uncertainty* about the central tendencies in the data
+   * Introduction to standard deviations, standard errors, and confidence intervals
+ * Wednesday 11/11:
+   * Preparing your visualizations for presentation (captions, axis titles, legends, and other annotations)
+   * Saving your visualizations (format, dimensions)
  
 # Preliminaries
 
@@ -345,565 +387,6 @@ d %>%
  * Do the same, but first average by subject and condition, and then plot the average (and confidence interval) of those by-subject averages of correct responses.
  * Try to make a pie chart that shows the proportion correct for the three conditions. (*coord_polar*)
 
-
-
-
-# Case Study I: (Rucci group)
-
-This study seeks to determine whether myopia affects fundamental properties of eye-movments. To this end, we compare typical and myopic subjects in a eye-movement task.
-
-Subjects moved their eyes horizontally to target fixation points. We are interested in three dependent variables for each trial:
-
- * How long did it take the subject to move their eyes to the target? (reaction time)
- * How fast were their eye-movements during the fastest point of the trial? (peak velocity)
- * How long did it take to reach this peak velocity? (time to peak velocity)
-
-None of these variables are available in the raw data, and we will have to infer / create them from the raw data.
-
-
-
-## Design
-
-Targets are presented at seven locations (*stimulus_deg* is one of -30, -20, -10, 0, 10, 20, 30). The total degree of horizontal movement depends on the stimulus on the previous trial, and the new stimulus on the current trial. For example, if the previous trial had a stimulus degree of -20 and the present trial has a stimulus degree of 20, that corresponds to a movement of positive 40 degrees.
-
-## Loading data from .csv file
-
-```{r, echo=FALSE}
-d.rucci = read_csv("./data/Rucci/Michele Good Data 15-12-00.csv") %>%
-  # Let's rename the session_idx variable into sth that's easier to remember (trial)
-  rename(trial = session_idx) %>%
-  # Let's (for now) remove all the variables about head position and rotation.
-  select(-starts_with("head")) %>%
-  # Let's sort the the data by trial, then time stamps (in increasing order)
-  arrange(trial, Unity_timestamp, SMI_timestamp)
-
-summary(d.rucci)
-```
-
-### Sanity check: Plotting left and right eye's x coordinate by stimulus degree
-
-If the left and right eye are generally tracked well, then we should see that most of the data points fall onto the 45 degree diagonal when we plot the left and right eye's x-position on the x-axis and y-axis, respectively:
- 
-```{r}
-d.rucci %>%
-  ggplot(aes(x = gaze_l_x, y = gaze_r_x, color = factor(stimulus_deg))) +
-  geom_hline(yintercept = 0, color = "gray") +
-  geom_vline(xintercept = 0, color = "gray") +
-  geom_point(alpha = .1) +
-  scale_color_discrete() +
-  facet_wrap(~stimulus_deg)
-```
-
-### Sanity check: Plotting left and right eye's x and y coordinates by stimulus degree
-
-If the subject did the task, we should see that eyes primarily move along the x-axis, rather than, for example, the y-axis. For this we first need to transform that data so that we have separate rows for gaze information about the left and right eye. Then we can plot the data in a way very similar to the plot in the previous section. 
-
-```{r}
-d.rucci %>%
-  pivot_longer(
-    cols = starts_with("gaze"),
-    names_to = c("eye", ".value"), 
-    names_pattern = "gaze_(.)_(.)") %>%
-  ggplot(aes(x = x, y = y, color = factor(stimulus_deg))) +
-  geom_hline(yintercept = 0, color = "gray") +
-  geom_vline(xintercept = 0, color = "gray") +
-  geom_point(alpha = .1) +
-  scale_color_discrete() +
-  facet_grid(stimulus_deg ~ eye)
-```
-
-
-
-## Getting information about previous trial's stimulus
-
-Let's calculate the change in degrees from the previous stimulus to the present stimulus. We will call this variable *stimulus_deg_delta*. This variable tells us how much and in which direction subjects had to move their eyes on the present trial.
-
-```{r}
-d.rucci %<>%
-  left_join(
-    d.rucci %>%
-      group_by(trial) %>%
-      summarise(stimulus_deg = first(stimulus_deg)) %>%
-      mutate(prev_stimulus_deg = lag(stimulus_deg, default = 0))
-  ) %>%
-  mutate(stimulus_deg_delta = stimulus_deg - prev_stimulus_deg)
-
-d.rucci
-```
-
-
-### Plot current eye position based on stimulus degree the previous stimulus degree
-
-This plot let's us check whether subjects were doing the task. Each row shows one target (*stimulus_deg*) and each column shows where the eye-movement started off (*prev_stimulus_deg*). Color indicates the total change in stimulus degree. Take for example the first row: we see that the subject's fixation seems to always end in the same point (-.5), corresponding to the stimulus degree of the present trial (-30). Where the eye-movements start differs from column to column, depending on the stimulus degree of the previous trial.
-
-```{r, fig.width=11, fig.height=11}
-d.rucci %>%
-  ggplot(aes(x = gaze_l_x, y = gaze_r_x, color = factor(stimulus_deg_delta))) +
-  geom_hline(yintercept = 0, color = "gray") +
-  geom_vline(xintercept = 0, color = "gray") +
-  geom_point(alpha = .1) +
-  scale_x_continuous("x-position (left eye)") +
-  scale_y_continuous("x-position (right eye)") +
-  scale_color_discrete("Change in stimulus degree") +
-  facet_grid(stimulus_deg~prev_stimulus_deg, labeller = label_both) +
-  theme(legend.position = "bottom")
-```
-
-
-
-## Getting information about reaction time, velocity, peak velocity, and time to peak velocity
-
-We can calculate the speed of the eye movement at each point in time by deviding the distance traveled by the time that has passed. We can do so either along just one dimension (say x) or along any combination of dimensions. Here, we calculate the distance traveled, and speed, along the x-axis. 
-
-TO DO: determine the appropriate definitions for these three measures. For example, the RT measure seems to contain a lot of zero values, suggesting that we're doing something wrong. Perhaps one should simply take the highest time within each trial?
-
-```{r}
-d.rucci %<>%
-  group_by(trial) %>%
-  # We are removing the SMI time stamp and then only keep rows that are distinct with
-  # regard to the Unity time stamp, so as to avoid deriving infinitely large eye 
-  # movement velocities. Other solutions might be preferred.
-  select(-Unity_timestamp) %>%
-  distinct() %>%
-  mutate(
-    gaze_l_x_distance = gaze_l_x - lag(gaze_l_x),
-    gaze_r_x_distance = gaze_r_x - lag(gaze_r_x),
-    # Notice how these variables are created in the order we list them within the
-    # call to mutate(). Therefore the definition of the velocity variable can refer
-    # to the distance variable we have just created.
-    gaze_l_x_velocity = gaze_l_x_distance / (SMI_timestamp - lag(SMI_timestamp)),
-    gaze_r_x_velocity = gaze_r_x_distance / (SMI_timestamp - lag(SMI_timestamp))
-  )
-
-d.rucci
-```
-
-Next, we also determine the peak velocity, time to peak velocity, and reaction time within each trial. We can summarize the data to one row per trial. Notice how we now only have 97 rows---one for each trial  (plus one for the 0th trial).
-
-If we wanted to keep around all the within-trial msec-by-msec information, we would simply use mutate() instead of summarise(). 
-
-```{r}
-# To determine when the distance between the intended fixation target and the actual
-# position of the eye is smallest, we need to translate the gaze position information
-# (gaze_l|r_x) into the same scale that is used to express stimulus_deg. The following
-# function will do this. 
-# *********** For now it just returns that same value that it's handed. BUT THIS WILL 
-# NEED TO BE CHANGED. ************
-gaze_to_stimulus = function(gaze) {
-  return(gaze)
-}
-
-distance_to_stimulus = function(gaze, stimulus) {
-  return(stimulus - gaze_to_stimulus(gaze))
-}
-
-d.rucci.byTrial = d.rucci %>%
-  # Remove all time steps on which the SMI timestamp did not change (this avoids)
-  # the infinite values for peak velocity that otherwise result from division by 0.
-  filter(SMI_timestamp != lag(SMI_timestamp)) %>%
-  # Addding trial and all other relevant information that we want to keep to the 
-  # grouping.
-  group_by(trial, stimulus_deg, stimulus_deg_delta) %>%
-  summarise(
-    # Notice that we're still using the grouped data. Therefore, taking the max() 
-    # of the gaze velocity returns the maximum velocity *within the current trial*.
-    # (the argument na.rm = T makes sure that we ignore non-defined [NA] values 
-    # during the calculation of the maximum; the same argument works for all similar
-    # functions like min, mean, sd, etc.)
-    gaze_l_x_peak_velocity = max(gaze_l_x_velocity, na.rm = T),
-    gaze_r_x_peak_velocity = max(gaze_r_x_velocity, na.rm = T),
-    gaze_l_x_time_to_peak_velocity = 
-      min(SMI_timestamp[which(gaze_l_x_velocity == gaze_l_x_peak_velocity)]) - 
-      min(SMI_timestamp),
-    gaze_r_x_time_to_peak_velocity = 
-      min(SMI_timestamp[which(gaze_r_x_velocity == gaze_r_x_peak_velocity)]) - 
-      min(SMI_timestamp),
-    gaze_l_RT = 
-      min(SMI_timestamp[
-          which(
-            distance_to_stimulus(gaze_l_x, stimulus_deg) == 
-              min(distance_to_stimulus(gaze_l_x, stimulus_deg))
-          )]) - 
-      min(SMI_timestamp),
-    gaze_r_RT = 
-      min(SMI_timestamp[
-          which(
-            distance_to_stimulus(gaze_r_x, stimulus_deg) == 
-              min(distance_to_stimulus(gaze_r_x, stimulus_deg))
-          )]) - 
-      min(SMI_timestamp)
-  )
-
-d.rucci.byTrial
-```
-
-### Plotting these trial-level properties by trial type (and, in the future, subject type)
-
-Ultimately, we would want to analyze the effect of between-subject variables (in pariculuar, myopic vs. non-myopic) on the trial-level variables we've derived above (peak velocity, time to peak velocity, and reaction time). Since we so far only have the data from one subject, we can instead plot these trial-level variables as a function of the different trial types:
-
-```{r}
-d.rucci.byTrial %>%
-  # remove 0th trial since it has extreme (and irrelevant) values
-  filter(trial != 0) %>%
-   pivot_longer(
-    cols = starts_with("gaze"),
-    names_to = c("eye", "measure"), 
-    names_pattern = "gaze_(.)_(.*)") %>%
-  # once there's more data, this should be aggregated by subejct, so that there 
-  # is one data point per subject and condition
-  ggplot(aes(x = stimulus_deg, y = value, color = factor(stimulus_deg_delta))) +
-  stat_summary(fun.data = mean_cl_boot, geom = "pointrange",
-               position= position_dodge(3), na.rm = T) +
-  scale_x_continuous("Stimulus degree") +
-  scale_y_continuous("mean") +
-  scale_color_discrete("Change in stimulus degree") +
-  facet_grid(measure ~ eye, labeller = label_both, scales = "free_y") +
-  theme(legend.position = "bottom") 
-```
-
-
-
-
-
-
-# Case Study II: visual decision-making (Haefner group)
-
-This group seeks to replicate [Herce Castañón et al. (2019)](https://www.nature.com/articles/s41467-019-09330-7).
-
-![Figure 2 from Herce Castañón et al. (2019)](./figures/HerceCastanonFigure2.png)
-
-## Design
-
-The design of the present study crossed two levels of contrast (Low = 15%, High = 60%), 3 levels of variance (0, 4, 10), and how the trials in the block were cued (L = left, R = right, N = uncued), for a total of 2 x 3 x 3 = 18 within-subject conditions.
-
-## Loading data from MatLab
-
-The data are stored in a MatLab (.mat) file. The file contains one matrix with fields: participant, exp(eriment), stimuli and response. Within each field, there is further information. The important information seems to be in the response field. Some of the important parts include:
-
- * responseRight: the response of the subject (0 for CCW, 1 for CW, w.r.t horizontal)
- * correct: what the correct answer is (0 for CCW, 1 for CW, w.r.t horizontal)
- * accuracy: whether subject got the correct answer (1) or not (0)
- * reaction time: time in seconds the subject took to answer
- * confidence: whether the subject was confident in their answer (1) or not (-1)
- * cue: whether the cue on that trials is left (-1), right (1), or no cue (0)
- * contrast: the contrast of the gabor patch on that trial
- * variance: variability in the orientation of gratings of gabor patches on that trial
- * isCuedBlock: whether a block (of trials) will have cues (1) or no cues (0)
-
-```{r load data, results="hide", echo=T}
-# Load a matlab file and extract the "data" matrix out of it
-d.haefner = readMat("./data/Haefner/uncertaintyV1-subject18-1-EarlyQuit.mat")
-d.haefner = d.haefner[["data"]][,,1][["response"]][,,1]
-d.haefner[["trueOrientaions"]] <- NULL
-
-# Look at what we've imported. 
-# NB: str() gives your the structure of an R object
-str(d.haefner)
-
-d.haefner %<>%
-  map(.f = function(x) c(x)) %>%
-  as_tibble() 
-
-# The data we have are preliminary pilot data from one of the 
-# experimenters, and that run did contain all trials. We omit 
-# all the trials with missing information.
-d.haefner %<>%
-  na.omit()
-
-# Add the definition of the three conditions of interest in the
-# original paper
-d.haefner %<>%
-  mutate(
-    condition = case_when(
-        variance == min(variance) & contrast == max(contrast) ~ "baseline",
-        variance == max(variance) & contrast == max(contrast) ~ "high variance",
-        variance == min(variance) & contrast == min(contrast) ~ "low contrast",
-        T ~ ""
-    )
-  )
-```
-
-
-Now that we've imported the data into an R data frame (or *tibble*), let's have a look at it. First, we can get a general idea of the data by using str() (for structure) or print():
-
-```{r}
-# NB: if you call an R object without any function, R
-#     automatically applies the print() function to the
-#     object. For a tibble/data.frame this provides an
-#     overview.
-d.haefner
-# same as print(d.haefner)
-
-# To view the entire data, use View(d.haefner)
-# To get a glimpse, use glimpse(d.haefner)
-```
-
-To instead get a summary of the data:
-
-```{r}
-summary(d.haefner)
-```
-
-## Figure 2 from Herce Castañón et al.
-
-
-### Panel A
-
-We begin by plotting the proportion of correct choices for *all* conditions:
-
-```{r}
-p = position_dodge(.9)
-
-p1 = d.haefner %>%
-  ggplot(
-    aes(x = factor(contrast),
-        y = accuracy)
-  ) +
-  stat_summary(fun.y = mean, geom="bar", position=p) +
-  stat_summary(fun.data = mean_cl_boot, geom = "linerange", position=p) +
-  facet_wrap(~ cue) +
-  scale_x_discrete(
-    "Contrast",
-    breaks = c(.15, .6),
-    labels = c("low", "high")
-  ) +
-  scale_y_continuous("Proportion correct") +
-  scale_fill_discrete("Variance")
-
-plot(p1)
-```
-
-### Panel B
-
-We begin by plotting the proportion of CW choices for *all* conditions:
-
-
-```{r, warning=FALSE}
-p2 = d.haefner %>%
-  ggplot(
-    aes(x = orientationMean,
-        y = responseRight,
-        color = factor(cue))
-  ) +
-  stat_summary(
-    data = d.haefner %>%
-      mutate(orientationBin = ntile(orientationMean, 6)) %>%
-      group_by(cue, contrast, variance, orientationBin) %>%
-      summarise_at(
-        c("orientationMean", "responseRight"),
-        mean),
-  # could be changed to pointrange and mean_cl_boot, once there are
-  # several subjects
-    fun.y = mean, geom = "point") + 
-  geom_smooth(method = "glm", 
-              se = FALSE, # remove to see CIs
-              method.args = list(family = binomial)) +
-  facet_grid(contrast ~ variance, 
-             labeller = 
-               labeller(.rows = label_both, .cols = label_both)) +
-  scale_x_continuous("mean orientation\n(relative to horizontal)") +
-  scale_y_continuous("Proportion of\nCW choices") +
-  scale_color_manual(
-    "Cue",
-    breaks = c(-1,0,1),
-    labels = c("left", "none", "right"),
-    values = c("red", "black", "blue")
-  ) 
-
-p2
-```
-
-
-```{r, include=FALSE}
-# if one wanted to share the facets of interest
-p2 +
-  geom_rect(
-    data = d.haefner %>% 
-      group_by(contrast, variance, condition) %>%
-      summarise(),
-    inherit.aes = F,
-    aes(fill = condition),
-    xmin = -Inf, xmax = Inf,
-    ymin = -Inf, ymax = Inf, alpha = 0.2) +
-  scale_fill_manual(
-    "Condition",
-    breaks = c("", "baseline", "high variance", "low contrast"),
-    values = c(NA, "green", "yellow", "orange")
-  )
-```
-
-### Panel A and B together
-
-```{r, fig.width=10, fig.height=5}
-p1 = d.haefner %>%
-  filter(condition != "", cue == 0) %>%
-  mutate(condition = factor(condition, 
-                            levels = c("baseline", "low contrast", "high variance"))) %>%
-  ggplot(
-    aes(x = condition,
-        y = accuracy)
-  ) +
-  stat_summary(fun.y = mean, geom="bar", position=p, fill = "blue", alpha = .5, color = NA) +
-  stat_summary(fun.data = mean_cl_boot, geom = "linerange", position=p) +
-  scale_x_discrete("") +
-  scale_y_continuous("Proportion correct") +
-  coord_cartesian(ylim = c(0,1)) +
-  theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank()
-  )
-
-p2 = d.haefner %>%
-  filter(condition != "") %>%
-  mutate(condition = factor(condition, levels = c("baseline", "low contrast", "high variance"))) %>%
-  ggplot(
-    aes(x = orientationMean,
-        y = responseRight,
-        color = factor(cue))
-  ) +
-  stat_summary(
-    data = d.haefner %>%
-      filter(condition != "") %>%
-      mutate(orientationBin = ntile(orientationMean, 6)) %>%
-      group_by(cue, condition, orientationBin) %>%
-      summarise_at(
-        c("orientationMean", "responseRight"),
-        mean),
-    fun.y = mean, geom = "point") + 
-  geom_smooth(method = "glm", 
-              se = FALSE, # remove to see CIs
-              method.args = list(family = binomial)) +
-  facet_wrap(~ condition) +
-  scale_x_continuous("mean orientation (relative to horizontal)") +
-  scale_y_continuous("Proportion of CW choices") +
-  scale_color_manual(
-    "Cue",
-    breaks = c(-1,0,1),
-    labels = c("left", "none", "right"),
-    values = c("red", "black", "blue")
-  ) +
-  theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    legend.position = "top"
-  )
-
-plot_grid(
-  plotlist = list(p1, p2),
-  nrow = 1,
-  rel_widths = c(.30, .70),
-  labels = c("a", "b"),
-  align = "hv",
-  axis = "bt"
-)
-```
-
-
-# Case Study III: improvements in visual perception after training (Huxlin group)
-
-This study seeks to assess the improvement due to visual training after stroke-induced blindness.
-
-
-## Load data from Excel files
-```{r, warning=FALSE, message=FALSE}
-path <- "./data/Huxlin/pattern_test.xlsx"
-
-# Importing all the sheets
-d.huxlin = path %>% 
-  excel_sheets() %>% 
-  purrr::set_names() %>% 
-  map_df(~ read_excel(path = path, sheet = .x, range = "BM1:BZ150"), .id = "sheet") 
-
-# Cleaning up information 
-d.huxlin %<>%
-  # Remove empty colmns
-  select(-c(OU, OD, OS, `...5`, `...10`)) %>%
-  # Rename remaining columns
-  purrr::set_names(
-    c("subject", 
-      paste(
-        rep(c("x","y", "dB"), 3), 
-        c(rep("OU", 3), rep("OD", 3), rep("OS", 3)), 
-        sep = "_"))) %>%
-  # Filter out templates
-  filter(!(subject %in% c("TEST 1", "TEST 2", "Pattern Template"))) %>%
-  # Filter out test sessions that have parentheses around them (not sure what those are)
-  filter(grepl("^[A-Z]+ [0-9]$", subject)) %>%
-  # Turn x, y, dB into long format
-  pivot_longer(
-    -subject,
-    names_to = c(".value", "eye"),
-    names_pattern = "(.*)_(.*)"
-  ) %>%
-  # Recode eye information to be more explicit
-  mutate(
-    eye = recode(eye,
-                 "OU" = "both (OU)", 
-                 "OD" = "right (OD)", 
-                 "OS" = "left (OS)")
-  ) %>%
-  # Separate subject name and test session
-  separate(
-    subject,
-    into = c("subject", "test"),
-    sep = " "
-  ) %>%
-  # Omit all empty cells
-  na.omit() %>%
-  mutate_at(c("subject", "eye"), factor) %>%
-  mutate(test = as.numeric(test))
-
-summary(d.huxlin)
-```
-
-## Visualizing visual fields
-
-Let's visualize the first test sesion of a few example subjects. For this purpose, I randomly sample 10 subjects:
-
-```{r, fig.height=10}
-library(viridis)
-
-d.huxlin %>%
-  filter(
-    subject %in% sample(levels(subject), 10),
-    test == 1) %>%
-  ggplot(aes(x = x, y = y, fill = dB)) +
-  geom_raster() +
-  scale_fill_viridis() +
-  facet_grid(subject ~ eye) + 
-  theme_minimal() +
-  theme(legend.position = "top")
-```
-
-
-## Visualizing improvements in visual fields over tests
-
-Now let's look at the first and last test of each subject and subtract them from each other. For that, we first need to turn the data into wide format with the first and last test next to each other.
-
-```{r, fig.height=9.5, fig.width=8}
-d.huxlin %>%
-  group_by(subject) %>%
-  filter(test %in% c(min(test), max(test))) %>%
-  mutate(test = as.character(ifelse(test == 1, "first_test", "last_test"))) %>%
-  pivot_wider(
-    c(subject, eye, x, y),
-    names_prefix = "dB.",
-    names_from = test,
-    values_from = c(dB)
-  ) %>%
-  mutate(dB.improvement = dB.last_test - dB.first_test) %>%
-  filter(subject %in% sample(levels(subject), 10)) %>%
-  ggplot(aes(x = x, y = y, fill = dB.improvement)) +
-  geom_tile() +
-  scale_fill_gradient2("Improvement\n(in dB)") +
-  facet_grid(subject ~ eye) + 
-  theme_light() + 
-  theme(
-    legend.position = "top",
-    panel.background = element_rect(fill = "gray50"), 
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank())
-```
 
 
 # Session info
