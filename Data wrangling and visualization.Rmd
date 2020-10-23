@@ -242,7 +242,7 @@ ggplot(
 #       y = RT))
 ```
 
-### Adding geometric components (geom_s)
+### Adding geometric components (geoms)
 
 Notice that this by itself only returns an empty plot. That's the case because we have not yet specified how we want the abstract properties of the graph to be expressed visually. That's achieved by specifying *geom*s (for geometrics), such as points (*geom_point*), lines (*geom_line*), histograms (*geom_histogram*), lineranges (*geom_linerange*), and many similar functions (I take it you're getting th hang for the naming scheme ...). You can find all of them on the [ggplot2 cheatsheet](https://rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf). 
 
@@ -328,7 +328,7 @@ p %+%
 
 Of course, we can use pipes to pipe the data frame into the plotting function, optionally after first piping the data through some additional *dplyr* operations (since the output of that entire pipe is again a data frame):
 
-```{r, fig.height=3}
+```{r, echo = T, fig.height=3}
 d %>%
   filter(condition != "A") %>%
   ggplot(
