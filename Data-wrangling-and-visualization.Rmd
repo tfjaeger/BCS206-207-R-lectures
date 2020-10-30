@@ -61,6 +61,8 @@ The *R* libraries *dplyr* provide us with efficient ways to transform ('wrangle'
 ## An example data set
 
 ```{r, include=FALSE}
+set.seed(9876)
+
 # Let's make some fake data
 d = 
   crossing(
@@ -85,9 +87,11 @@ d =
   as_tibble() %>%
   select(-starts_with("mu")) %>%
   mutate_at(c("size", "condition", "subject"), factor)
+
+write_csv(d, path = "./data/example_data.csv")
 ```
 
-We will illustrate the use of *dplyr* with the following data from an experiment with a 2AFC task in three within-subject letter sizes (A, B, C), for which we have extracted correctness (1 = correct; 0 = incorrect) and reaction times (RT):
+We will illustrate the use of *dplyr* with the following data from an experiment with a 2AFC task in three within-subject letter sizes (1, 2, 4), for which we have extracted correctness (1 = correct; 0 = incorrect) and reaction times (RT):
 
 ```{r, echo=TRUE}
 summary(d)
@@ -106,8 +110,8 @@ summarise(d, meanCorrect = mean(correct))
 Or just for letter size 1:
 
 ```{r, echo=T}
-d.A = filter(d, size == "1")
-summarise(d.A, meanCorrect = mean(correct))
+d.1 = filter(d, size == "1")
+summarise(d.1, meanCorrect = mean(correct))
 ```
 
 ## Maggritr's pipes
@@ -125,8 +129,8 @@ Here we will use only of the 'pipes' magrittr provides:
 
 Remember how we got the mean proportion correct for just letter size 1?
 ```{r, echo=T}
-d.A = filter(d, size == "1")
-summarise(d.A, meanCorrect = mean(correct))
+d.1 = filter(d, size == "1")
+summarise(d.1, meanCorrect = mean(correct))
 ```
 
 This is inelegant and hard to read. Pipes let us make this more transparent:
