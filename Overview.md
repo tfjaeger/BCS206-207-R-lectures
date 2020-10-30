@@ -5,14 +5,14 @@ date: "10/25/2020"
 output: pdf_document
 ---
 
-# Goals for next two weeks
+# Our goals for the next two weeks
 
 Over the next two weeks, we will introduce you to the basics of data visualization in R (Jaeger group; taught by Florian) and MatLab (Haefner and Mitchell groups; taught by Sabya). The topics we aim to cover are the following:
 
- * Data wrangling: Turning the data into the form you need (*dplyr*)
+ * Data wrangling: Turning the data into the form you need (e.g., *dplyr* in R)
  * Data visualization:
    * General principles
-   * How to plot in R (*ggplot*, *plotly*)
+   * How to plot in R (*ggplot*, *plotly*) / Matlab
  * Documenting your code:
    * R Markdown / MatLab notebook
  * Introduction to confidence intervals
@@ -55,6 +55,7 @@ We only have a relatively short time, so we will focus on learning what tools ar
    * Summarizing variability in your data---and thus the researcher's *uncertainty* about the central tendencies in the data
    * Introduction to standard deviations, standard errors, and confidence intervals
  * Wednesday 11/11:
+   * **Prepare before class:** Read "Ten simple rules for better figures"" (https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1003833)
    * Preparing your visualizations for presentation (captions, axis titles, legends, and other annotations)
    * Saving your visualizations (format, dimensions)
  
