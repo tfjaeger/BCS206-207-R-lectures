@@ -1,6 +1,6 @@
 ---
 title: 'Data Wrangling and Visualization 101 in R'
-author: "for BCS 206"
+author: "Florian Jaeger"
 date: "Fall 2020"
 output:
   pdf_document:
@@ -33,30 +33,46 @@ theme_set(theme_bw())
 ```
 
 
+# Overview
+
+This document provides an introduction to data wrangling and visualization in R. It contains sections marked as exercises. **Please complete these exercises prior to next Monday's class** and submit them on slack. In addition your homework for this Wednesday is to apply the knowledge gain from this tutorial to *your own data*. **By this Wednesday, post at least one plot about your data on slack using the skills learned in this tutorial.** You are encouraged to ask questions (and help others) on slack. 
+
 # Preliminaries
 
 ## Version control
 
 RStudio makes version control, data backup, and data sharing easy (e.g., via Github.com). To use it, download and install git on your computer. Get a free github.com or bitbucket.com account. You only have to do this once.
 
-Then, for each project, create a new project in RStudio and link it to the remote repository (select “Create project” > “Version control”). You will have to enter a URL for the remote repository, which you get, for example, at github.com under the repository’s main page by clicking the “Clone or download button”.
+Then, for each project, create a new project in RStudio and link it to the remote repository (select "Create project" > "Version control"). You will have to enter a URL for the remote repository, which you get, for example, at github.com under the repository’s main page by clicking the "Clone or download button".
 
-For step by step instructions, see:
+For step by step instructions, follow these links:
 
  * [Setting up RStudio for version control](http://www.geo.uzh.ch/microsite/reproducible_research/post/rr-rstudio-git/)
  * [RStudio help on version control](https://support.rstudio.com/hc/en-us/articles/200532077?version=1.1.442&mode=desktop)
  * [Reverting a file to an earlier version](https://stackoverflow.com/questions/38465025/how-do-i-revert-to-a-previous-git-in-r-studio)
 
+You can clone this repository from Github. In RStudio:
+
+ 1. From the file menu (top left), select "New project …"
+ 1. Select "Version control"
+ 1. Select "Git"
+ 1. Enter "\url{https://github.com/tfjaeger/BCS206DataWrangling.git}" in the top field (for the Repository URL). Select where you want this project to be stored in the last/third field. I usually just go with the default, which for me is the desktop.
+ 1. This should clone the tutorial for Monday from Github.com to your local drive, and open it as a new R project.
+ 1. Once that has happened, check in the Git tab (top right of RStudio window) whether you’re on the right branch of the repository. 
+ 1. **This tutorial is the 2020-2021 branch of the git repository.** Right next to the "New Branch" button it should say "2020-2021". If it instead says "master", click on "master". This opens a menu from which you can select "2020-2021". Please do so.
+
 
 ## Reproducibility and literate coding
 
-R and RStudio support reproducibility oriented literate coding via Sweave and Knitr: lab books, presentations, and papers can weave/knit together data, code, and text. The document you share contains the code needed to create its outputs (figures, tables, etc.). This is achieved by combining latex or R markdown with R code (or, for that matter, code from other programming languages). For an excellent video-based introduction, see this [tutorial on R markdown](https://rmarkdown.rstudio.com/lesson-1.html). *This document is R markdown compiled with RStudio's knitr.
+R and RStudio support reproducibility oriented literate coding via Sweave and Knitr: lab books, presentations, and papers can weave/knit together data, code, and text. The document you share contains the code needed to create its outputs (figures, tables, etc.). This is achieved by combining latex or R markdown with R code (or, for that matter, code from other programming languages). For an excellent video-based introduction, see this [tutorial on R markdown](https://rmarkdown.rstudio.com/lesson-1.html). *This document is R markdown compiled with RStudio's knitr.* If you downloaded the [git repository](https://github.com/tfjaeger/BCS206DataWrangling), you should see both the .Rmd and the .pdf file. The latter is created ("knitted") from the former. The former contains all the R code required to generate the figures, etc. in the PDF file.
 
 
 
 # Data wrangling
 
-The *R* libraries *dplyr* provide us with efficient ways to transform ('wrangle') our data tables. The library *magrittr* let's us concatenate these operations in transparent and easy to read code. 
+The *R* libraries *dplyr* provide us with efficient ways to transform ('wrangle') our data tables. The library *magrittr* let's us concatenate these operations in transparent and easy to read code. Like many of the packages we use in this tutorial, they are part of the *tidyverse*---an awesome and powerful collection of R packages for the data sciences (\url{https://www.tidyverse.org/}).
+
+There are many video and interactive tutorials for R, RStudio, and the tidyverse online. I *highly* recommend that you invest a handful of ours to get your inner data scientist started. Your future self will thank you. R is increasingly used both in academia and in the data sciences, and that includes the libraries we use for this tutorial (which are also available in similar form for Python). I would recommend going through at least the first four Sections of [RStudio's R Primers]{https://rstudio.cloud/learn/primers}: The basics, working with data, visualizing data, and tidying data.
 
 ## An example data set
 
@@ -73,7 +89,7 @@ d =
   ) %>%
   mutate(
     muLogOddsCorrect = 0 + as.numeric(size) * .25 + (as.numeric(size) - 1) * ifelse(condition == "easy", 0, 1) * .5,
-    muLogRT = 6.5 - as.numeric(size) * .6 - as.numeric(size) * ifelse(condition == "easy", 0, 1) * -.33) %>%
+    muLogRT = 6.5 - as.numeric(size) * .6 - as.numeric(size) * ifelse(condition == "easy", 0, 1) * -.16) %>%
   group_by(subject) %>%
   mutate(
     muLogOddsCorrect.bySubject = rnorm(1, 0, 1.5),
@@ -82,7 +98,7 @@ d =
   rowwise() %>%
   mutate(
     correct = rbinom(1, 1, plogis(muLogOddsCorrect + muLogOddsCorrect.bySubject)),
-    RT = round(exp(rnorm(1, muLogRT + muLogRT.bySubject - .2 * correct, .05)), 3)
+    RT = round(exp(rnorm(1, muLogRT + muLogRT.bySubject - .2 * correct, .1)), 3)
   ) %>%
   as_tibble() %>%
   select(-starts_with("mu")) %>%
@@ -91,7 +107,7 @@ d =
 write_csv(d, path = "./data/example_data.csv")
 ```
 
-We will illustrate the use of *dplyr* with the following data from an experiment with a 2AFC task in three within-subject letter sizes (1, 2, 4), for which we have extracted correctness (1 = correct; 0 = incorrect) and reaction times (RT):
+We will illustrate the use of *dplyr* with the following data from an experiment with a 2AFC task. On each trial, subjects had to fixate on a fixation cross. The fixation cross was then replaced by a small small number, and subjects had to quickly answer whether they saw the number "3" or "8". Half of the trials displayed "3", half displayed "8". Within subject, the experiment manipulated two variables, the size of the number (1, 2, or 4) and whether the number was surrounded by four other numbers above, below, left, and right of it (hard) or not (easy). The presence of other numbers presented close to the target number is known to make recogntion of the target number harder---an effect known as "visual crowding". For each trial, the software recorded whether the subject's response was correct (1 = correct; 0 = incorrect) and the reaction time for the response (RT):
 
 ```{r, echo=TRUE}
 summary(d)
@@ -107,7 +123,7 @@ Dplyr has 'verbs' like filter, select, summarize, mutate, transmute, etc. to let
 summarise(d, meanCorrect = mean(correct))
 ```
 
-Or just for letter size 1:
+Or just for number size 1:
 
 ```{r, echo=T}
 d.1 = filter(d, size == "1")
@@ -127,7 +143,7 @@ Here we will use only of the 'pipes' magrittr provides:
 
 ## Putting it together: Wrangling through pipes
 
-Remember how we got the mean proportion correct for just letter size 1?
+Remember how we got the mean proportion correct for just number size 1?
 ```{r, echo=T}
 d.1 = filter(d, size == "1")
 summarise(d.1, meanCorrect = mean(correct))
@@ -155,7 +171,7 @@ How can we:
 
  * View the entire data set? (*View*)
  
- * Calculate the by-subject averages for all three letter sizes? (*group_by*, *summarise*)
+ * Calculate the by-subject averages for all three number sizes? (*group_by*, *summarise*)
  
  * Calculate the by-subject standard deviations around those averages? (*group_by*, *summarise*)
  
@@ -205,13 +221,16 @@ The two main libraries in R we will be using for visualization are *ggplot2* and
 
 ## Ggplot2's components (aesthetic mappings)
 
-In order to plot in ggplot2, we need to understand the way it thinks about visualization. There are excellent online course that explain all of this, so I focus on the basics. 
+In order to plot in ggplot2, we need to understand the way it thinks about visualization. There are excellent online course that explain all of this, so I focus on the basics. **For reasons that become apparent below, we start by just looking at one subject, subject 1.**
 
 At the heart of a plot is a mapping between properties of your data (i.e., column in your data frame) and abstract properties of the plot (such as x- or y-coordinates, color, fill, transparency (alpha), linetype, shape, or label information). If we call the function ggplot() in order to create a figure, we specify two arguments: the name of the data frame we want to work with, and the mapping. The latter is done through a helpful function called *aes()*---for aesthetics:
 
 ```{r, echo=T, fig.height=3}
+d.s1 = d %>%
+  filter(subject == 1)
+
 ggplot(
-  data = d,
+  data = d.s1,
   mapping = 
     aes(
       x = size,
@@ -233,7 +252,7 @@ We add such components to a plot with "+".
 
 ```{r, echo=T, fig.height=3}
 p = ggplot(
-  data = d,
+  data = d.s1,
   mapping = 
     aes(
       x = size,
@@ -242,17 +261,17 @@ p = ggplot(
 
 plot(p)
 ```
-Notice that this plot is not particularly helpful! There is a lot of points and they are all overlaid, making it hard to get a clear idea of the data. One way we can improve this plot is to add transparency to the points. Another way is to jitter the points along the x-axis. Both approaches help convey information about the distribution of RTs at each letter size, and sometimes---especially, when we have a lot of data---we might want to combine both approaches. For example, here's the same plot with just transparency added. Since we have quite a bit of data, it still does not convey much information:
+Notice that this plot is not particularly helpful! There is a lot of points and they are all overlaid, making it hard to get a clear idea of the data. One way we can improve this plot is to add transparency to the points. Another way is to jitter the points along the x-axis. Both approaches help convey information about the distribution of RTs at each number size, and sometimes---especially, when we have a lot of data---we might want to combine both approaches. For example, here's the same plot with just transparency added. Since we have quite a bit of data, it still does not convey much information:
 
 
 ```{r, echo=T, fig.height=3}
 p = ggplot(
-  data = d,
+  data = d.s1,
   mapping = 
     aes(
       x = size,
       y = RT)) +
-  geom_point(alpha = .1)
+  geom_point(alpha = .05)
 
 plot(p)
 ```
@@ -261,12 +280,12 @@ And here is the plot with some additional jitter added along the x-axis. Note th
 
 ```{r, echo=T, fig.height=3}
 p = ggplot(
-  data = d,
+  data = d.s1,
   mapping = 
     aes(
       x = size,
       y = RT)) +
-  geom_point(alpha = .1, position = position_jitter(height = 0))
+  geom_point(alpha = .05, position = position_jitter(height = 0))
 
 plot(p)
 ```
@@ -274,7 +293,7 @@ That's much better already, giving us a much clearer idea of how the data is dis
 
 ```{r, echo=T, fig.height=3}
 p = ggplot(
-  data = d,
+  data = d.s1,
   mapping = 
     aes(
       x = size,
@@ -284,21 +303,89 @@ p = ggplot(
 
 plot(p)
 ```
+Notice the clear 'stripes' in the data
+
+
 ### Visualizing data summaries
 
-We could also summarize the data and plot a bootstrapped 95% confidence interval as a pointrange. In this case, we're specifying a statistical summary of the data and, as part of that, specify through which type of geom we would like it to be expressed:
+While it is often useful to see the raw data, this *alone* can be insufficient to communicate important aspects of the data. Specifically, we often are interested in whether the distributions of two conditions (e.g., the number size and easy vs. hard conditions) differ. The plots we have seen so far *suggest* that this might be the case, but we can't be certain. In order to convey information about the distribution of our data, we often provide data *summaries* instead of---or in addition to---the raw data. Whenever possible, I would highly recommend to go with the "in addition to" option. There is a lof of value in seeing the raw data, as long as the overall tendencies we are interested in can also be recognized.
 
-```{r}
-p +
-  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", shape = 15, size = 1)
+Data can be summarized down to various levels of abstraction. For example, we can *bin* the data, and report the binned 'raw' data: 
+
+```{r, fig.height=3}
+ggplot(
+  data = d.s1,
+  mapping = 
+    aes(
+      x = size,
+      y = RT,
+      fill = condition)) +
+  geom_dotplot(binaxis = "y", stackdir = "center", color = NA, dotsize = .5, binwidth = 10)
 ```
-
-Alternatively, we could add a violin (essentially a mirrored density distribution):
+Dotplots can be an effective means for a categorical outcome variable (or the proportions resulting from them). Try it out for plotting the correctness of responses, rather than RTs. For a continuous outcome variables, however, dotplots are difficult to read (as in the RT plot above), and you might be better of with plotting the histogram or density of the distribution. This can elegantly be done by adding so-called violins to the raw data:
 
 ```{r, fig.height=3}
 p +
-  geom_violin(fill = NA)
+  geom_violin(fill = NA, size = 1)
 ```
+Some researchers also like dotplots, which try to provide a high-level summary of the data while also providing *some* information about the general distribution of the data and any potential outliers. Boxplots tend to be plotted *instead* of the raw data since boxplots already contain any raw data that is not captured well by the summary they provide (the outlier points). The line in the center of the box provides the median of the data in that condition. The upper and lower end of the box indicate the "inter-quartile range (IQR) from the 25th to the 75th quantile of the outcome (you can use the command quantiles() to get the quantiles yourself, if you want to compare them to what the plot provides). The whiskers (the lines below and above the box) extend to the largest and smallest value at most 1.5-times larger/smaller than the end of the box. Just as the height of the box provides a summary of the middle 50\% of the data (the IQR), the whiskeys give an idea of the distribution beyond that middle part. Any points outside of that range are plotted and are referred to as "outliers". Notably all outliers in the present case are high RT outliers, not low RT outliers. This is quite common for variables that have highly skewed distributions: RTs have a lower, but no upper bound. 
+
+Finally, the notches (indentation on the sides of the box) provide the 95\% confidence intervals around the means (CIs. We'll learn later *how CIs are obtained*, and what exactly they mean. For now, it suffices to say that (appropriately obtained) CIs are a critical visual component in plots when we want to know whether the means differ between conditions.
+
+```{r, fig.height=3}
+ggplot(
+  data = d.s1,
+  mapping = 
+    aes(
+      x = size,
+      y = RT,
+      color = condition)) +
+  geom_boxplot(fill = NA, outlier.alpha = .1, notch = T)
+```
+In publications, you will find that the data is often summarized even further into just the central tendency (mean) and its 95\% CIs. Here we plot the mean and 95\% CIs on top of the raw data. In this case, we have so much data that the CIs are very narrow and not even recognizable in the plot:
+
+```{r}
+p +
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", size = .2)
+```
+Here have used a pointrange to summarize the data. Alternatives include linerange (geom_linerange; no mean shown) or bar graphs with error intervals (geom_bar and geom_errorbar).
+
+**It is important that we summarize the data at an appropriate level when obtained CIs.** We will cover this in more detail in a later class, but for now remember that what we do here is ok if we're looking at the data from one subject, but that we need to do things a bit differently when we look at the combined data from multiple subjects. 
+
+
+### Plotting data from multiple subjects
+
+So far we have plotted just one subject. Notice what happens when we update the scatter plot with the data from *all* subjects. There are now multiple 'stripes' visible in the data. Think about why that is the case. Any ideas?
+
+```{r, echo=T, fig.height=3}
+# We can update a plot with new data using %+%
+p = p %+% 
+  d
+
+plot(p)
+```
+Correct: subjects differ from each other. This includes how fast they are overall, and might also include differences in how they are affected by the experimental conditions. This also means that the individual observations we are *not* independent of each other because the data points from the same subject resemble each other. We talk about "repeated measures" from the subject and call such data "repeated measures data". Another term that is used to refer to such data is *hierarchical* data or *hierarchically organized() data. Whenever we deal with such data, we need to be careful, for example, when we calculate CIs. We will return to that issue in our class on confidence intervals. For now, the next section focuses on how we can effectively visualize the data for all subjects without having to make many individual plots. 
+
+
+### Facets
+
+If we want to have separate panels conditional on another variable, we can do so through *facet*s. There are two major facet functions, *facet_wrap* (to have panels conditional on one variable) and *facet_grid* (conditional on two variables). For example, we can have separate panels for each subject:
+
+```{r, fig.height=12, fig.width=8}
+p +
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", size = .2) +
+  facet_wrap(facets = ~ subject)
+```
+
+Or we could show by-subject RTs in two columns, separately for false and correct answers. Here, we do so after first sampling 6 random subjects (since the plot would otherwise be rather large).
+
+```{r, fig.height=8, fig.width=4}
+p %+%
+  (d %>% filter(subject %in% sample(levels(subject), 6))) +
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", size = .2) +
+  facet_grid(facets = subject ~ correct, labeller = label_both)
+```
+
 
 ### Scales and coordinate systems
 
@@ -329,25 +416,6 @@ p = p +
 plot(p)
 ```
 
-### Facets
-
-If we want to have separate panels conditional on another variable, we can do so through *facet*s. There are two major facet functions, *facet_wrap* (to have panels conditional on one variable) and *facet_grid* (conditional on two variables). For example, we can have separate panels for each subject:
-
-```{r, fig.height=12, fig.width=8}
-p +
-  geom_violin(fill = NA) +
-  facet_wrap(facets = ~ subject)
-```
-
-Or we could show by-subject RTs in two columns, separately for false and correct answers. Here, we do so after first sampling 6 random subjects (since the plot would otherwise be rather large).
-
-```{r, fig.height=8, fig.width=4}
-# We can update a plot with new data using %+%
-p %+%
-  (d %>% filter(subject %in% sample(levels(subject), 6))) +
-  geom_violin(fill = NA) +
-  facet_grid(facets = subject ~ correct, labeller = label_both)
-```
 
 ## Pipes (again)
 
@@ -366,12 +434,12 @@ d %>%
 
 ## Exercises
 
- * Plot a histogram of the RTs by letter size. Make on version where you plots the histograms in different facets, and another version where you have only one facet and use fill color to distinguish between letter sizes. (*geom_histogram*)
- * Plot the average proportion of correct answers by letter size as a pointrange.
- * Do the same, but first average by subject and letter size, and then plot the average (and confidence interval) of those by-subject averages of correct responses.
- * Try to make a pie chart that shows the proportion correct for the three letter sizes. (*coord_polar*)
+ * Plot a histogram of the RTs by number size. Make on version where you plots the histograms in different facets, and another version where you have only one facet and use fill color to distinguish between number sizes. (*geom_histogram*)
+ * Plot the average proportion of correct answers by number size as a pointrange.
+ * Do the same, but first average by subject and number size, and then plot the average (and confidence interval) of those by-subject averages of correct responses.
+ * Try to make a pie chart that shows the proportion correct for the three number sizes. (*coord_polar*)
 
-# TBA
+# TBA (Next week)
 
  * making x-axis have right units
  * axis labels
