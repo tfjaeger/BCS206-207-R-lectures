@@ -13,11 +13,14 @@ output:
   html_document:
     df_print: paged
     toc: yes
+urlcolor: blue
+header-includes:
+   - \usepackage{animate}
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  echo = FALSE, results = "markup", warning = FALSE, cache = FALSE,
+  echo = FALSE, results = "markup", warning = TRUE, cache = FALSE,
   fig.align = "center", fig.width = 6.5)
 ```
 
@@ -72,7 +75,7 @@ R and RStudio support reproducibility oriented literate coding via Sweave and Kn
 
 The *R* libraries *dplyr* provide us with efficient ways to transform ('wrangle') our data tables. The library *magrittr* let's us concatenate these operations in transparent and easy to read code. Like many of the packages we use in this tutorial, they are part of the *tidyverse*---an awesome and powerful collection of R packages for the data sciences (\url{https://www.tidyverse.org/}).
 
-There are many video and interactive tutorials for R, RStudio, and the tidyverse online. I *highly* recommend that you invest a handful of ours to get your inner data scientist started. Your future self will thank you. R is increasingly used both in academia and in the data sciences, and that includes the libraries we use for this tutorial (which are also available in similar form for Python). I would recommend going through at least the first four Sections of [RStudio's R Primers]{https://rstudio.cloud/learn/primers}: The basics, working with data, visualizing data, and tidying data.
+There are many video and interactive tutorials for R, RStudio, and the tidyverse online. I *highly* recommend that you invest a handful of ours to get your inner data scientist started. Your future self will thank you. R is increasingly used both in academia and in the data sciences, and that includes the libraries we use for this tutorial (which are also available in similar form for Python). I would recommend going through at least the first four Sections of [RStudio's R Primers](https://rstudio.cloud/learn/primers): The basics, working with data, visualizing data, and tidying data.
 
 ## An example data set
 
@@ -167,7 +170,7 @@ d %>%
 
 ## Exercises
 
-How can we: 
+Remember [dplyr cheatsheet](https://dplyr.tidyverse.org/)! How can we: 
 
  * View the entire data set? (*View*)
  
@@ -217,7 +220,7 @@ d
 
 # Data visualization
 
-The two main libraries in R we will be using for visualization are *ggplot2* and *plotly*. Ggplot2 provides a grammar of graphics approach to plotting. Plotly let's us interact with our data. In particular, *ggplotly()* wrapped around a ggplot2 figure let's us interact with that figure.
+The two main libraries in R we will be using for visualization are *ggplot2* and *plotly*. Ggplot2 provides a grammar of graphics approach to plotting. Plotly let's us interact with our data. In particular, *ggplotly()* wrapped around a ggplot2 figure let's us interact with that figure. Before you start, make sure to get the superb [ggplot2 cheatsheet](https://ggplot2.tidyverse.org/).
 
 ## Ggplot2's components (aesthetic mappings)
 
@@ -405,8 +408,7 @@ p +
   geom_violin(fill = NA) +
   scale_y_continuous(limits = c(200,1500))
 ```
-
-Since reaction times often have distributions that are more lognormal, rather than normal, let's update our original plot to use a log-transformed y-axis:
+More generally, **scales are applied before *ggplot2* applies any statistics, whereas coordinate systems do only affect how we see the data**. This is important to remember. For example, since reaction times often have distributions that are more lognormal, rather than normal, let's update our original plot to use a log-transformed y-axis. This does not only affect how we *see* the data, it also affects how teh densities that are plotted by the violin geom are estimated:
 
 ```{r, fig.height=3}
 p = p +
@@ -422,7 +424,7 @@ plot(p)
 Of course, we can use pipes to pipe the data frame into the plotting function, optionally after first piping the data through some additional *dplyr* operations (since the output of that entire pipe is again a data frame):
 
 ```{r, echo = T, fig.height=3}
-d %>%
+p = d %>%
   filter(size != "1") %>%
   ggplot(
     aes(
@@ -430,20 +432,97 @@ d %>%
       y = RT,
       color = condition)) +
   geom_point(alpha = .05, position = position_jitter()) 
+
+plot(p)
 ```
 
 ## Exercises
+
+Remember [ggplot2 cheatsheet](https://ggplot2.tidyverse.org/)!
 
  * Plot a histogram of the RTs by number size. Make on version where you plots the histograms in different facets, and another version where you have only one facet and use fill color to distinguish between number sizes. (*geom_histogram*)
  * Plot the average proportion of correct answers by number size as a pointrange.
  * Do the same, but first average by subject and number size, and then plot the average (and confidence interval) of those by-subject averages of correct responses.
  * Try to make a pie chart that shows the proportion correct for the three number sizes. (*coord_polar*)
 
-# TBA (Next week)
+
+
+
+
+
+
+# Working out the details of your visualizations (Next week)
 
  * making x-axis have right units
+ * color choices
  * axis labels
+ * legends
  * panel grid, etc.
+ 
+## Themes
+
+Themes can be used to customize any detail of a plot. There are many customized themes, including in additional libraries (e.g., *ggthemes*). Here a few examples:
+
+```{r, echo=T, fig.height=3, fig.width=4}
+library(ggthemes)
+
+p + theme_wsj()
+p + theme_economist()
+p + theme_tufte()
+# etc.
+```
+
+If fact, any ggplot has a theme, even if you don't specify one. In that case, *ggplot2* uses the default theme. You can also create your own themes, or modify any aspect of the present theme. Check out *?theme for more information. For example, to remove the x-axis labels, and to change the font of the y-axis labels:
+
+```{r, echo=T, fig.height=3, fig.width=4}
+p + theme(
+  axis.text.x = element_blank(),
+  axis.text.y = element_text(family = "Times", face = "bold", size = 6))
+```
+
+Elements that can be modified or removed include any text elements in the axis or legend (alignment, angle, size, font, emphasis, etc.), the fill or border lines of any element (incl. the background color of the panel or the entire plot area), the padding, margins, and other spacing between the elements, any tick marks on the axis, any grid lines, any aspects of the legend its orientation, shape, etc. It's worth looking into the helpfile or a *ggplot2* overview, as the themes also contain many elements that are not even visible in the default.
+
+## Other libraries
+
+There's a huge number of additional libraries that build on *ggplot2*, and they keep changing. Many of the libraries introduce additional geoms, incl. single-line commands for complex plots (e.g., $k$-by-$k$ correlation plots; trees diagrams; field-specific plot types like map types, dentrograms, ridge plots, 3D plots). Other packages extend what *ggplot2* can do or make it easier to use. 
+
+Here I just note a few:
+
+ * Extend functionality:
+  * gganimate for animations, movies, gifs, etc.
+  * plotly to turn any ggplot into an interactive graph
+  * cowplot to combine multiple ggplots into a single figure
+  
+ * Make it easier to do things that ggplot can already do:
+   * ggforce to add powerful functionality
+   * ggthemes to add themes
+   * gggraph to visualize graphs
+   * ggeffects to help with plotting model summaries
+   * ggsignif to add significance brackets (seen in many publications)
+   * ggpubr to make ggplots publication ready
+   * ggsci to add scientifically themed palettes
+   * viridis to add highly contrastive color schemes (beautiful)
+
+ * Shiny to make web-based apps in which users can interact with your plots.
+
+For further inspiritation, check out these galaries:
+
+ * [Gallery of R plots](https://www.r-graph-gallery.com/)
+ * [List of ggplot2 extensions](https://exts.ggplot2.tidyverse.org/gallery/)
+
+For example, instead of faceting our data by subject, we might animate it by subject. Gganimate can create movies, but here I am embedding the animation directly into the PDF. This will only work if you work the document in Acrobat Reader. Try it out:
+
+```{r animation, fig.show='animate', interval=1/10, fig.width=4, fig.height=3}
+library(gganimate)
+
+p +
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", size = .2) +
+  transition_states(subject) +
+  labs(title = paste("Subject {ceiling(frame/ 10)} of {ceiling(nframes / 10)}")) +
+  enter_fade() +
+  exit_fade()
+```
+ 
 
 # Session info
 ```{r session_info, echo=FALSE, results='markup'}
