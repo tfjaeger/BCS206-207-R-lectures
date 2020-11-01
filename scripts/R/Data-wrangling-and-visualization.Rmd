@@ -274,7 +274,7 @@ p = ggplot(
     aes(
       x = size,
       y = RT)) +
-  geom_point(alpha = .05)
+  geom_point(alpha = .1)
 
 plot(p)
 ```
@@ -288,7 +288,7 @@ p = ggplot(
     aes(
       x = size,
       y = RT)) +
-  geom_point(alpha = .05, position = position_jitter(height = 0))
+  geom_point(alpha = .1, position = position_jitter(height = 0))
 
 plot(p)
 ```
@@ -302,7 +302,7 @@ p = ggplot(
       x = size,
       y = RT,
       color = condition)) +
-  geom_point(alpha = .05, position = position_jitter(height = 0))
+  geom_point(alpha = .1, position = position_jitter(height = 0))
 
 plot(p)
 ```
