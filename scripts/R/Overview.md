@@ -40,6 +40,9 @@ We only have a relatively short time, so we will focus on learning what tools ar
 [comment]: #   + increase summarization (point range with confidence interval [do not explain yet how CI is derived])
 [comment]: #  + Rejoin at about 10am into whole class to discuss pros and cons of the different levels of summary.
 
+* **By Friday 11/6:**
+   * Complete all exercises from the Monday class that weren't completed during class and send them to your group's R/Matlab instructor.
+
  * Wednesday 11/4: 
    * **Prepare before class:** Load your group's data. For at least one subject in your data, try to repeat the different plots we've introduced on Monday for your own data. You will be asked to present your efforts in class (to go through your script while sharing your screen). It's ok to get stuck, but please use Slack to ask for help prior to class. 
    * In class, we will also go through problems/errors you might have encountered while trying to create visualizations of your data. 
