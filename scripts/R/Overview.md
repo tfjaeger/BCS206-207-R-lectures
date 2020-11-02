@@ -3,6 +3,7 @@ title: "Data Wrangling and Visualization 101 - Overview"
 author: "Florian Jaeger"
 date: "10/25/2020"
 output: pdf_document
+urlcolor: blue
 ---
 
 # Our goals for the next two weeks
@@ -55,10 +56,12 @@ We only have a relatively short time, so we will focus on learning what tools ar
 [comment]: #  + Rejoin at about 10am into whole class to discuss what's working with the figures and what's still missing.
 
  * Monday 11/9:
+   * **Prepare before class:** Watch this great [video on confidence intervals by Dr. Nic ](https://www.youtube.com/watch?v=tFWsuO9f74o). Then watch this simulation video by the Khan Academy on the [meaning of confidence intervals](https://www.khanacademy.org/math/ap-statistics/estimating-confidence-ap/introduction-confidence-intervals/v/confidence-interval-simulation) and what happens to those confidence intervals, if we repeat (replicate) an experiment. 
+   Some of you might prefer to instead (or also) have a manuscript that covers this topic in writing. Cumming's (2013) [suggestions for a 'new' statistics](https://journals.sagepub.com/doi/full/10.1177/0956797613504966) is a worthwhile read and has a self-contained section on "Replication, p values, and CIs" that I recommend. You can just read those 2 pages. 
    * Summarizing variability in your data---and thus the researcher's *uncertainty* about the central tendencies in the data
    * Introduction to standard deviations, standard errors, and confidence intervals
  * Wednesday 11/11:
-   * **Prepare before class:** Read "Ten simple rules for better figures"" (https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1003833)
+   * **Prepare before class:** Read [Ten simple rules for better figures](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1003833)
    * Preparing your visualizations for presentation (captions, axis titles, legends, and other annotations)
    * Saving your visualizations (format, dimensions)
  
