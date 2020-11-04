@@ -117,7 +117,7 @@ Are there any criteria that would make you think that a trial should be excluded
 
 Here is a plot for all subjects that builds on what Ji-ze posted on Slack. **How would you go about changing the titles for the two axes and the condition legend?** Hint: use scales! The R primer I mentioned in the tutorial for the first class talks about scales, too, if you prefer an introduction to reading help files.
 
-```{r}
+```{r, fig.width=10}
 d.motion %>%
   ggplot(
     aes(
