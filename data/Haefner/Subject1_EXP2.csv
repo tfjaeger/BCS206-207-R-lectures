@@ -1,3 +1,4 @@
+conditionName,apertureDegree,probeEccentricity,relativeTilt,trialNumber,probeAngle,absoluteTilt,reactionTime,stimulusTime,probeVelX,probeVelY,probeStartLocationX,probeStartLocationY,probeEndLocationX,probeEndLocationY,sceneIndex
 OppositeFlow,1,0,1.465248,1,-15,-13.53475,1.05193,2,0.05176381,-0.1931852,1,0,0.9482362,-0.1931852,8
 ControlCondition,0,0,-0.08081055,2,15,14.91919,1.67233,2,-0.05176381,-0.1931852,1,0,1,0.2,3
 OppositeFlow,1,1,5.490478,3,-15,-9.509522,1.033337,2,0.05176381,-0.1931852,1.5,0,1.448236,-0.1931852,8
