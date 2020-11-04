@@ -67,6 +67,8 @@ You can clone this repository from Github. In RStudio:
  1. **This tutorial is the 2020-2021 branch of the git repository.** Right next to the "New Branch" button it should say "2020-2021". If it instead says "master", click on "master". This opens a menu from which you can select "2020-2021". Please do so.
 
 
+
+
 ## Reproducibility and literate coding
 
 R and RStudio support reproducibility oriented literate coding via Sweave and Knitr: lab books, presentations, and papers can weave/knit together data, code, and text. The document you share contains the code needed to create its outputs (figures, tables, etc.). This is achieved by combining latex or R markdown with R code (or, for that matter, code from other programming languages). For an excellent video-based introduction, see this [tutorial on R markdown](https://rmarkdown.rstudio.com/lesson-1.html) (see also this [helpful step by step introduction](https://ismayc.github.io/rbasics-book/4-rmarkdown.html)). *This document is R markdown compiled with RStudio's knitr.* If you downloaded the [git repository](https://github.com/tfjaeger/BCS206DataWrangling), you should see both the .Rmd and the .pdf file. The latter is created ("knitted") from the former. The former contains all the R code required to generate the figures, etc. in the PDF file.
@@ -446,6 +448,78 @@ Remember [ggplot2 cheatsheet](https://ggplot2.tidyverse.org/)!
  * Plot the average proportion of correct answers by number size as a pointrange.
  * Do the same, but first average by subject and number size, and then plot the average (and confidence interval) of those by-subject averages of correct responses.
  * Try to make a pie chart that shows the proportion correct for the three number sizes. (*coord_polar*)
+
+
+
+
+
+# Applying these methods to your own data
+
+## Importing your data
+
+### DeAngelis & Haefner group
+
+```{r, message=F}
+files = list.files(path = "../../data/Haefner", pattern = "*.csv", full.names = T)
+
+d.motion = tibble()
+for (f in files) {
+  d.motion %<>%
+    rbind(read_csv(f)) %>%
+    mutate_at(
+      c("conditionName", "apertureDegree", "probeEccentricity", "probeAngle"),
+      factor
+    )
+}
+```
+
+### Jaeger group
+
+```{r, message=F, warning=F}
+d.speech.exposure = read_csv("../../data/Jaeger/Liu-Jaeger-2018-exposure-1-s2.0-S0010027718300118-mmc3.csv")
+d.speech.test = read_csv("../../data/Jaeger/Liu-Jaeger-2018-test-1-s2.0-S0010027718300118-mmc2.csv") %>%
+  select(-X1)
+```
+## Plotting your data
+
+### DeAngelis & Haefner group
+
+#### Trial exclusions
+
+Are there any criteria that would make you think that a trial should be excluded from further analysis?
+
+```{r}
+d.motion %>%
+  summary()
+```
+
+
+#### Relative tilt
+
+Let's start with one subject in Experiment 1. Plot the relative tilt (your dependent variable) as a function of the probe's angle (probeAngle, 3 values), eccentricity (probeEccentricity, 2 values), apperature degree (aperatureDegree, 4 values) and the condition (conditionName). 
+
+```{r}
+d.motion
+```
+
+
+### Jaeger group
+
+#### Plotting all subjects' performance during exposure
+
+Get the average reaction time (AdjustedRT) and accuracy (IsCorrect) of each subject and visualize the distribution of subjects with regard to these two variables.
+
+```{r}
+d.speech.exposure
+```
+#### Plotting all subjects' performance during test
+
+
+#### Relating subjects' performance during exposure and test
+
+Plott the boundary shift during test against the proportion of shifted words that were rated as words.
+
+
 
 
 
