@@ -161,7 +161,7 @@ d.motion %>%
 
 #### Plotting all subjects' performance during exposure
 
-We are getting the average reaction time (AdjustedRT) and accuracy (IsCorrect) of each subject and visualize the distribution of subjects with regard to these two variables. For some subjects, RTs were not recorded. I'm setting the RTs to the average of all other subject. Note that I'm using a log-transformed coordinate system on the x-axis since some RTs can be very high. **What would you conclude from this plot? Should you exclude subjects if they are very slow or fast? Should you look into whether *some* of their trials are very very slow or fast? What would be a good exclusion criterion (if any) based on RTs? Do you think all subjects performed with sufficiently high accuracy to be included in the analysis?**
+We are getting the average reaction time (AdjustedRT) and accuracy (IsCorrect) of each subject and visualize the distribution of subjects with regard to these two variables. Note that I'm using a log-transformed coordinate system on the x-axis since some RTs can be very high. **What would you conclude from this plot? Should you exclude subjects if they are very slow or fast? Should you look into whether *some* of their trials are very very slow or fast? What would be a good exclusion criterion (if any) based on RTs? Do you think all subjects performed with sufficiently high accuracy to be included in the analysis?**
 
 ```{r}
 d.speech.exposure %>%
@@ -169,12 +169,21 @@ d.speech.exposure %>%
   summarise_at(
     c("AdjustedRT", "IsCorrect"),
     mean) %>% 
+  # For some subjects, RTs were not recorded. I'm setting the RTs to the average of all other subject. 
+  # (for the current purpose this is ok since we simply don't know their RTs and thus would not exclude 
+  # them based on their RTs)
   mutate(AdjustedRT = ifelse(is.na(AdjustedRT), mean(AdjustedRT, na.rm = T), AdjustedRT)) %>%
   ggplot(
     aes(x = AdjustedRT, y = IsCorrect)) +
+  # geom_label and geom_text take the aesthetic label to plot text. geom_label additionally puts a box 
+  # around the text, and that makes things a little easier to read.
   geom_label(
     aes(label = Subject),
     alpha = .5) +
+  # I'm transforming the coordinate system along the x-axis to use a log-axis. Note that the data (and 
+  # thus also the statistics, such as obtaining the subject-specific mean) are still done in terms of 
+  # raw RTs. That means that a single (or a few) extreme values can change the mean RTs of the subject 
+  # quite a bit. That's something to think about when you think about exclusion criteria.
   coord_trans(
     x = "log10")
 ```
@@ -190,18 +199,23 @@ Here's the basic plot for the test data. Note that we first summarized the data 
 
 ```{r}
 d.speech.test %>%
+  # Removing the control condition
   filter(Label != "FILLER") %>%
+  # Obtaining subject-level means for each label condition and continuum step
   group_by(Subject, Label, Step) %>%
   summarise(ProportionSH = mean(ifelse(Response == "SH", 1, 0))) %>%
   ggplot(
     mapping = aes(x = Step, y = ProportionSH, color = Label)) +
+  # pointranges and lines to summarize the distribution of by-subject means
   stat_summary(fun.data = mean_cl_boot, geom = "pointrange") +
   stat_summary(fun.data = mean_cl_boot, geom = "line") +
+  # remapping the values of step onto a scale from 1 to 6.
   scale_x_continuous(
     "Continuum step",
     breaks = sort(unique(d.speech.test$Step)),
     labels = 1:6
   ) +
+  # remapping the values of the label condition
   scale_color_discrete(
     name = "Label",
     breaks =  c("SH", "S"),
