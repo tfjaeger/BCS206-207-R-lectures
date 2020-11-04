@@ -43,18 +43,58 @@ theme_set(theme_bw())
 
 ### DeAngelis & Haefner group
 
-```{r, message=F}
+```{r, message=F, warning=F}
+# get list of files from a directory
 files = list.files(path = "../../data/Haefner", pattern = "*.csv", full.names = T)
 
+# make an empty table that we can add the information contained in the files to
 d.motion = tibble()
 for (f in files) {
   d.motion %<>%
-    rbind(read_csv(f)) %>%
-    mutate_at(
-      c("conditionName", "apertureDegree", "probeEccentricity", "probeAngle"),
-      factor
-    )
+    rbind(
+      read_csv(f) %>%
+        # store filename in table (to extract subject and experiment info)
+        mutate(filename = f)) 
 }
+
+# Just like %>% pipes data forward, %<>% does the same *but* at the very end of the 
+# pipe then re-assigns the outcome of the pipe to the variable at the beginning of 
+# the pipe. So we're making some additions to d.motions and then override the original
+# content of d.motion
+d.motion %<>%
+  # rename variables
+  rename(
+    flowCondition = conditionName,
+    apertureSize = apertureDegree
+  ) %>%
+  # get experiment and subject information (by separating filename into separate columns)
+  # (this throws a warning b/c the format of filenames differs across files, but the outcome
+  # is correct)
+  separate(filename, sep = "_", into = c("subject", "experiment", "rest")) %>%
+  # clean up some variable values with regular expression 
+  mutate(
+    subject = gsub("^.*Subject(.*)$", "\\1", subject),
+    experiment = gsub("^EXP(.).*", "\\1", experiment),
+    flowCondition = gsub("^(.*)(Flow|Condition)[0-9]?{0,1}", "\\1", flowCondition)  # removing 1,2 and "Flow
+  ) %>%
+  # reorder columns and remove unnecessary columns
+  select(experiment, subject, trialNumber,
+         flowCondition, apertureSize, probeEccentricity, probeAngle, sceneIndex,
+         everything()) %>%
+  select(-rest) %>%
+  # make the following variables factors
+  mutate_at(
+    c("experiment", "subject", "flowCondition", 
+      "apertureSize", "probeEccentricity", "probeAngle", "sceneIndex"),
+    factor
+  ) 
+
+d.motion %<>%
+  # removing subject 4 for now since the tilt measures were incorred
+  filter(subject != 4)
+
+d.motion %>%
+  summary()
 ```
 
 ### Jaeger group
@@ -72,36 +112,110 @@ d.speech.test = read_csv("../../data/Jaeger/Liu-Jaeger-2018-test-1-s2.0-S0010027
 
 Are there any criteria that would make you think that a trial should be excluded from further analysis?
 
-```{r}
-d.motion %>%
-  summary()
-```
-
 
 #### Relative tilt
 
-Let's start with one subject in Experiment 1. Plot the relative tilt (your dependent variable) as a function of the probe's angle (probeAngle, 3 values), eccentricity (probeEccentricity, 2 values), apperature degree (aperatureDegree, 4 values) and the condition (conditionName). 
+Here is a plot for all subjects that builds on what Ji-ze posted on Slack. **How would you go about changing the titles for the two axes and the condition legend?** Hint: use scales! The R primer I mentioned in the tutorial for the first class talks about scales, too, if you prefer an introduction to reading help files.
 
 ```{r}
-d.motion
+d.motion %>%
+  ggplot(
+    aes(
+      x = apertureSize, 
+      y = relativeTilt, 
+      color = flowCondition,
+      group = paste(flowCondition, experiment, subject))) +
+  # obtain 95% bootstrapped CIs for each unique combination of x, y, color, and facet 
+  # (facet is added below) and plot as pointrange
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", position = position_dodge(.2)) +
+  # get mean for each unique combination of x, y, color, and facet (below) and plot as lines
+  stat_summary(fun = mean, geom = "line", position = position_dodge(.2)) +
+  # plot (and calculate CIs for) all of the above separately for each combination of experiment
+  # and subject
+  facet_grid(subject ~ experiment,
+             # this labeller makes sure that we're plotting not just the value, but also the 
+             # variable *name* in the facet titles (with the gray background)
+             labeller = labeller(
+               experiment = label_both,
+               subject = label_both))
 ```
 
+Now let's zoom in on Subject 2 in Experiment 1. Plot the relative tilt as a function of the aperature size and condition, as in the above plot (but only for that subject). **Now think about how you can further show the data separated by probe's angle (probeAngle, 3 values) and eccentricity (probeEccentricity, 2 values).** Hint: you might use shape, transparency (alpha), or faceting to show the data split by additional variables.
+
+#### Plotting changes across trials
+
+Some of you also plotted changes across trials. Arya, for example, looked at changes in RTs across trials. Try to plot changes in the relative tilt effect across trials. Here's a plot for Subject 1 in Experiment 1. **How would you combine the data from subjects 1-3 from Experiment 1 and then plot an average for those subjects?** Hint: you don't need to do any manual averaging. Look into geom_smooth, which let's you plot trend lines.
+
+```{r}
+d.motion %>%
+  filter(subject == 1, experiment == 1) %>%
+  ggplot(
+    aes(
+      x = trialNumber, 
+      y = relativeTilt, 
+      color = flowCondition)) +
+  geom_line()
+```
 
 ### Jaeger group
 
 #### Plotting all subjects' performance during exposure
 
-Get the average reaction time (AdjustedRT) and accuracy (IsCorrect) of each subject and visualize the distribution of subjects with regard to these two variables.
+We are getting the average reaction time (AdjustedRT) and accuracy (IsCorrect) of each subject and visualize the distribution of subjects with regard to these two variables. For some subjects, RTs were not recorded. I'm setting the RTs to the average of all other subject. Note that I'm using a log-transformed coordinate system on the x-axis since some RTs can be very high. **What would you conclude from this plot? Should you exclude subjects if they are very slow or fast? Should you look into whether *some* of their trials are very very slow or fast? What would be a good exclusion criterion (if any) based on RTs? Do you think all subjects performed with sufficiently high accuracy to be included in the analysis?**
 
 ```{r}
-d.speech.exposure
+d.speech.exposure %>%
+  group_by(Subject) %>%
+  summarise_at(
+    c("AdjustedRT", "IsCorrect"),
+    mean) %>% 
+  mutate(AdjustedRT = ifelse(is.na(AdjustedRT), mean(AdjustedRT, na.rm = T), AdjustedRT)) %>%
+  ggplot(
+    aes(x = AdjustedRT, y = IsCorrect)) +
+  geom_label(
+    aes(label = Subject),
+    alpha = .5) +
+  coord_trans(
+    x = "log10")
 ```
+
+**Only after you've settled on an exclusion criterion, try to modify this graph: Specifically, how would you modify this plot to a) only show Experiment 1 and b) color subjects based on the label condition and the pen condition?** Hint: labels have both fill (aesthetic fill) and border color (aesthetic color). You can use these two visual means to express the label and pen condition.
+
+**How might you additionally indicate in this plot which subjects your exclusion criteria leave for analysis?** Hint: you could use a geom_rect to draw a semi-transparent rectangle or you could use geom_segment, geom_hline, and/or geom_vline to draw borders in the RT-by-accuracy space that to indicate your exclusion criteria. Look up those geoms.
+
+
 #### Plotting all subjects' performance during test
+
+Here's the basic plot for the test data. Note that we first summarized the data down to the subject level---i.e., one data point per subject, label condition, and subject. We then get the 95% bootstrapped CIs over those *by-subject means*. This is avoiding overly confident (small) CIs that would result from us failing to acknowledge that repeated measures taken from the same subject are *not* independent of each other. This is different from the motion group, since they are plotting their data separately by subject.
+
+```{r}
+d.speech.test %>%
+  filter(Label != "FILLER") %>%
+  group_by(Subject, Label, Step) %>%
+  summarise(ProportionSH = mean(ifelse(Response == "SH", 1, 0))) %>%
+  ggplot(
+    mapping = aes(x = Step, y = ProportionSH, color = Label)) +
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange") +
+  stat_summary(fun.data = mean_cl_boot, geom = "line") +
+  scale_x_continuous(
+    "Continuum step",
+    breaks = sort(unique(d.speech.test$Step)),
+    labels = 1:6
+  ) +
+  scale_color_discrete(
+    name = "Label",
+    breaks =  c("SH", "S"),
+    labels = c("/sh/", "/s/")
+  )
+```
+
+**How would you change the y-axis label? How would you make sure that the y-axis actually goes from 0 to 0?** Hint: both things can be changed through a scale component. **And, how would you add information about the pen-in-the-hand vs. pen-in-the-mouth condition to this plot?** Hint: shape and linetype provide you with additional visual means, as does faceting.
+
 
 
 #### Relating subjects' performance during exposure and test
 
-Plott the boundary shift during test against the proportion of shifted words that were rated as words.
+**If you figured out the above, go ahead and try to plot the boundary shift during test against the proportion of shifted words that were rated as words.** This will require *combining* the exposure and test data. You will first have to aggregate (summarise) each of the two data down to the by-subject level, and then you can *join* the two data frames (look up ?left_join).
 
 
 
