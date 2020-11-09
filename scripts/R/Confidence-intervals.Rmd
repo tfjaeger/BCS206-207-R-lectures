@@ -45,7 +45,7 @@ You might prefer to instead (or also) have a manuscript that covers this topic i
 ## Important concepts and terminology
 In the brain and cognitive sciences, the goal of conducting experiments is to advance our understanding of the brain/mind. We aim to test the **predictions** of **theories** or more specific **hypotheses**. These theories typically constitute propositions about causes, and the statistical tests we conduct typically assess the predicted correlations that would result from the hypothesized causal relations. These correlations are assessed on some finite amount of data from *samples* we've obtained from the underyling *population* of interest.
 
-To illustrate this with an example, remember the experiment on visual crowding from last week. We hypothesized that (H1) performance in a number recognition task increases with increasing size of the number and that (H2) performance decreases in visually crowded displays. We elicited two types of **dependent variables** or **outcomes**: response time and response accuracy. To turn our hypotheses into predictions, we implicitly assumed **linking hypotheses** that link the abstract theoretical construct ("performance") to the specific dependent measures we employ in our experiment: higher performance $\rightarrow$ faster processing $\rightarrow$ response times and higher performance $\rightarrow higher accuracy. 
+To illustrate this with an example, remember the experiment on visual crowding from last week. We hypothesized that (H1) performance in a number recognition task increases with increasing size of the number and that (H2) performance decreases in visually crowded displays. We elicited two types of **dependent variables** or **outcomes**: response time and response accuracy. To turn our hypotheses into predictions, we implicitly assumed **linking hypotheses** that link the abstract theoretical construct ("performance") to the specific dependent measures we employ in our experiment: higher performance $\rightarrow$ faster processing $\rightarrow$ response times and higher performance $\rightarrow$ higher accuracy. 
 
 To test the resulting predictions, we manipulated both the number size (size 1, 2, 4) and the visual crowding (easy: no crowding, hard: numbers flanking the target number on all sides). Thus size and crowding are our **independent variables** or **predictors**.
 
@@ -123,7 +123,7 @@ ggplot(
   scale_x_continuous(limits = c(0,20)) +
   facet_wrap(~ Experiment) +
   scale_color_manual(
-    "Contains true mean?",
+    "95% CI contains true mean?",
     breaks = c(T, F),
     labels = c("yes", "no"),
     values = c("green", "red")
@@ -161,13 +161,14 @@ ggplot(
     size = 1
   ) +
   geom_hline(yintercept = 10, color = "blue") +
-  scale_x_continuous() +
+  scale_x_continuous(expand = c(0,0)) +
   scale_color_manual(
-    "Contains true mean?",
+    "95% CI contains true mean?",
     breaks = c(T, F),
     labels = c("yes", "no"),
     values = c("green", "red")
-  )
+  ) +
+  theme(legend.position = "bottom")
 ```
 This begins to give us an intuition as to what it means that 95% of our 95% CIs over repeated experiments are guaranteed to contain the true mean of the data. We see 7 red lines out of 200 (3.5%), so that 96.5% of the 200 CIs we have constructed contain the true mean. If we continue to collect more samples we will find that in the long run 95% of the 95% CIs contain the true mean.
 
@@ -347,8 +348,14 @@ d %>%
   ggplot(aes(x = size, 
              y = correct,
              color = condition)) +
-  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", position = position_dodge(.1)) +
-  stat_summary(fun.data = mean_cl_boot, geom = "line", position = position_dodge(.1)) +
+  stat_summary(
+    fun.data = mean_cl_boot, 
+    geom = "pointrange", 
+    position = position_dodge(.1)) +
+  stat_summary(
+    fun.data = mean_cl_boot, 
+    geom = "line", 
+    position = position_dodge(.1)) +
   scale_y_continuous("Proportion correct answers") +
   coord_cartesian(ylim = c(0.75,1))
 ```
@@ -370,8 +377,14 @@ d %>%
   ggplot(aes(x = size, 
              y = correct,
              color = condition)) +
-  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", position = position_dodge(.1)) +
-  stat_summary(fun.data = mean_cl_boot, geom = "line", position = position_dodge(.1)) +
+  stat_summary(
+    fun.data = mean_cl_boot, 
+    geom = "pointrange", 
+    position = position_dodge(.1)) +
+  stat_summary(
+    fun.data = mean_cl_boot, 
+    geom = "line", 
+    position = position_dodge(.1)) +
   scale_y_continuous("Proportion correct answers") +
   coord_cartesian(ylim = c(0,1))
 ```
