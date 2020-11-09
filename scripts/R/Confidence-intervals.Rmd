@@ -51,7 +51,7 @@ To test the resulting predictions, we manipulated both the number size (size 1, 
 
 When we analyze data from our experiment, we assume that the **observations** we obtain constitute a **sample** of the underlying **population**. We then use this finite sample to draw **inferences** about the population. For example, a really typical question we ask would be whether the means of the population differ between two conditions. Sticking with our example, we might test our hypothesis about the brain/mind by asking whether we can confidently conclude that reaction times are indeed smaller in for high frequency objects, compared to reactions times for high frequency objects. Either way, this constitutes an inference we're aiming to draw about the world, based on the finite sample of observations we collected in our experiment.
 
-Specifically, we will compare at the condition **means in our sample**. For example to test (H2) that visual crowding affects performance, we would compare the mean response time in the easy and hard condition of the experiment. In null hypothesis significance testing (NHST), we do this comparison by **assuming the null hypothesis that there is *no* difference** and then assessing how improbable the actual sample means are under that null hypothesis. If the sample means are too far apart from each other so that their difference is improbable to have happened by chance under the null hypothesis, we **reject the null hypothesis** and speak of a **significant difference**. 
+Specifically, we will compare the condition **means in our sample**. For example to test (H2), we would compare the mean response time in the easy and hard condition of the experiment. In null hypothesis significance testing (NHST), we do this comparison by **assuming the null hypothesis that there is *no* difference** and then assessing how improbable the actual sample means are under that null hypothesis. If the sample means are too far apart from each other so that their difference is improbable to have happened by chance under the null hypothesis, we **reject the null hypothesis** and speak of a **significant difference**. 
 
 But how do we determine how different is "too different", so that we should reject the null hypothesis? For  this, we need a measure of our **uncertainty**. Intuitively, this measure should depend on the inherent **random variability** of the data: the more variable the data is---i.e., the more each sample drawn from the underlying population will differ from each other---the less certain we can be that the same absolute difference between two condition means is meaningful (or in NHST terms: "significant"). This is where confidence intervals come in.
 
@@ -133,7 +133,7 @@ ggplot(
 
 To focus on the CIs, let's just plot the 20 observations and the CI for each instance of the experiment. We'll essentially make the x-axis of the previous plot the y-axis of the new plot, and use the x-axis to indicate the different experiments. That way we can plot many more thought experiments next to each other. Let's plot 200 of them. The CI is colored green if it includes the true mean and red if it doesn't.
 
-```{r, fig.width=12, message=F}
+```{r, fig.width=12.5, message=F}
 # set a random seed (so that repeated instances of this document yield the same result)
 set.seed(5)
 n.exp = 200
