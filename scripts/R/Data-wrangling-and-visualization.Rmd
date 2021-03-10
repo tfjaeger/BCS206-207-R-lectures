@@ -453,38 +453,6 @@ Remember [ggplot2 cheatsheet](https://ggplot2.tidyverse.org/)!
 
 
 
-
-# Working out the details of your visualizations (Next week)
-
- * making x-axis have right units
- * color choices
- * axis labels
- * legends
- * panel grid, etc.
- 
-## Themes
-
-Themes can be used to customize any detail of a plot. There are many customized themes, including in additional libraries (e.g., *ggthemes*). Here a few examples:
-
-```{r, echo=T, fig.height=3, fig.width=4}
-library(ggthemes)
-
-p + theme_wsj()
-p + theme_economist()
-p + theme_tufte()
-# etc.
-```
-
-If fact, any ggplot has a theme, even if you don't specify one. In that case, *ggplot2* uses the default theme. You can also create your own themes, or modify any aspect of the present theme. Check out *?theme for more information. For example, to remove the x-axis labels, and to change the font of the y-axis labels:
-
-```{r, echo=T, fig.height=3, fig.width=4}
-p + theme(
-  axis.text.x = element_blank(),
-  axis.text.y = element_text(family = "Times", face = "bold", size = 6))
-```
-
-Elements that can be modified or removed include any text elements in the axis or legend (alignment, angle, size, font, emphasis, etc.), the fill or border lines of any element (incl. the background color of the panel or the entire plot area), the padding, margins, and other spacing between the elements, any tick marks on the axis, any grid lines, any aspects of the legend its orientation, shape, etc. It's worth looking into the helpfile or a *ggplot2* overview, as the themes also contain many elements that are not even visible in the default.
-
 ## Other libraries
 
 There's a huge number of additional libraries that build on *ggplot2*, and they keep changing. Many of the libraries introduce additional geoms, incl. single-line commands for complex plots (e.g., $k$-by-$k$ correlation plots; trees diagrams; field-specific plot types like map types, dentrograms, ridge plots, 3D plots). Other packages extend what *ggplot2* can do or make it easier to use. 
