@@ -1,0 +1,69 @@
+---
+title: 'BCS 207: More on data visualization'
+author: "Florian"
+date: "Spring 2021"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+  word_document:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, results = "markup", warning = FALSE, cache = TRUE,
+  fig.align = "center", fig.width = 6.5)
+```
+
+```{r libraries, include = F}
+library("tidyverse")  # dplyr, ggplot2, and more from the tidyverse
+library("magrittr")   # for pipes
+library("R.matlab")   # for interacting with MatLab
+library("readxl")     # for interacting with Excel
+library("cowplot")    # for combining figures
+library("plotly")     # for interactive plots
+
+library(png)
+library(grid)
+
+theme_set(theme_bw())
+```
+
+
+# Themes
+
+There are now *many* prepared themes that you can choose from:
+
+  + The core (https://ggplot2.tidyverse.org/reference/ggtheme.html)
+  + Some extensions (https://www.statology.org/best-ggplot2-themes/)
+  + The endless supply (https://www.datanovia.com/en/blog/ggplot-themes-gallery/)
+  + Make your theme gallery (https://www.r-bloggers.com/2020/05/vignette-generate-your-own-ggplot-theme-gallery/)
+
+```{r fig.width=1, fig.height=8, echo=FALSE}
+img <- readPNG("figures/yoda.png")
+grid.raster(img)
+```
+
+## Make your own
+```{r}
+# let's make a theme
+# https://ggplot2-book.org/polishing.html
+
+ggplot()
+last_plot() + theme(panel.background = element_rect(fill = "black"))
+```
+
+
+
+
+
+# Session info
+```{r session_info, echo=FALSE, results='markup'}
+devtools::session_info()
+```
