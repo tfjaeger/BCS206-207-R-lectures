@@ -88,7 +88,7 @@ ggplot(
   scale_x_continuous(limits = c(0,20))
 ```
 
-Here are 12 more instances of this thought experiment (the blue line is always the same, as it shows the *population's distribution*). This time I've also plotted a 95% CI based on the (in this correct) assumption of a normally distributed outcome. We'll learn below how it was constructed.
+Here are 12 more instances of this thought experiment (the blue line is always the same, as it shows the *population's distribution*). This time I've also plotted a 95% CI based on the (in this case, correct) assumption of a normally distributed outcome. We'll learn below how it was constructed.
 
 ```{r, message=F}
 # set a random seed (so that repeated instances of this document yield the same result)
