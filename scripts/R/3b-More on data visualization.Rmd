@@ -1,0 +1,153 @@
+---
+title: 'BCS 207: More on data visualization'
+author: "Florian"
+date: "Spring 2021"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+  word_document:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, results = "markup", warning = FALSE, cache = TRUE,
+  fig.align = "center", fig.width = 6.5)
+```
+
+```{r libraries, include = F}
+library("tidyverse")  # dplyr, ggplot2, and more from the tidyverse
+library("magrittr")   # for pipes
+library("R.matlab")   # for interacting with MatLab
+library("readxl")     # for interacting with Excel
+library("cowplot")    # for combining figures
+library("plotly")     # for interactive plots
+
+library(ggthemes)     # lots of themese
+library(ggforce)      # lots of additional geoms
+library(png)        
+library(grid)
+
+theme_set(theme_bw())
+```
+
+# Overview
+This tutorial introduces you to additional aspects of plotting in R, such as the use of themes to fine-tune your plots.
+
+# Read in example data
+
+```{r, include=F, message=F}
+d = read_csv("../../data/example_data.csv")
+```
+
+## Example plot
+
+```{r}
+p <- ggplot(
+  data = d %>% 
+    filter(subject == 2),
+  mapping = 
+    aes(
+      x = size,
+      y = RT,
+      color = condition)) +
+  geom_point(alpha = .1, position = position_jitter(width = .1)) +
+  stat_summary(fun = mean, geom = "line", position = position_dodge(.1)) +
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", position = position_dodge(.1)) 
+
+p
+```
+
+# Storing plots at specific sizes and aspect ratios
+
+```{r}
+ggsave(plot = p, filename = "../../figures/example_plot.png", 
+       width = 16, height = 8, units = "cm", dpi = "print")
+```
+
+# Themes
+
+Themes can be used to customize any detail of a plot. There are many customized themes, including in additional libraries (e.g., *ggthemes*). Here a few examples:
+
+```{r, echo=T, fig.height=3, fig.width=4}
+p + theme_wsj()
+p + theme_economist()
+p + theme_tufte()
+# etc.
+```
+
+If fact, any ggplot has a theme, even if you don't specify one. In that case, *ggplot2* uses the default theme. There are now *many* prepared themes that you can choose from:
+
+  + The core (https://ggplot2.tidyverse.org/reference/ggtheme.html)
+  + Some extensions (https://www.statology.org/best-ggplot2-themes/)
+  + The endless supply (https://www.datanovia.com/en/blog/ggplot-themes-gallery/)
+  + Make your theme gallery (https://www.r-bloggers.com/2020/05/vignette-generate-your-own-ggplot-theme-gallery/)
+
+```{r fig.width=1, fig.height=8, echo=FALSE}
+img <- readPNG("../../figures/yoda.png")
+grid.raster(img)
+```
+
+## Make your own
+
+Check out *?theme for more information. For example, to remove the x-axis labels, and to change the font of the y-axis labels:
+
+```{r, echo=T, fig.height=3, fig.width=4}
+p + theme(
+  panel.background = element_rect(fill = "black"),
+  axis.text.x = element_blank(),
+  axis.text.y = element_text(family = "Times", face = "bold", size = 6))
+```
+
+Elements that can be modified or removed include any text elements in the axis or legend (alignment, angle, size, font, emphasis, etc.), the fill or border lines of any element (incl. the background color of the panel or the entire plot area), the padding, margins, and other spacing between the elements, any tick marks on the axis, any grid lines, any aspects of the legend its orientation, shape, etc. It's worth looking into the helpfile or a *ggplot2* overview, as the themes also contain many elements that are not even visible in the default.
+
+```{r}
+# let's make a theme
+# https://ggplot2-book.org/polishing.html
+
+p
+p + theme(panel.background = element_rect(fill = "black"))
+```
+
+# Drawing elements and functions
+
+```{r}
+circles <- data.frame(
+  x0 = rep(1:3, 3),
+  y0 = rep(1:3, each = 3),
+  r = seq(0.1, 1, length.out = 9)
+)
+
+# Behold the some circles
+ggplot() +
+  geom_circle(aes(x0 = x0, y0 = y0, r = r, fill = r), data = circles) +
+  coord_fixed()
+
+p1 <- ggplot(
+  data = 
+    data.frame(
+      x = seq(-100, 100),
+      y = seq(-100, 100)),
+  mapping = 
+    aes(
+      x = x,
+      y = y)) + 
+  theme_nothing() +
+  theme(panel.background = element_rect(fill = "black"))
+
+p1 + 
+  geom_circle(aes(x0 = 10, y0 = 10, r = 10), color = "white")
+```
+
+
+
+# Session info
+```{r session_info, echo=FALSE, results='markup'}
+devtools::session_info()
+```

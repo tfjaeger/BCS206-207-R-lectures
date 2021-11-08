@@ -1,0 +1,402 @@
+---
+title: "Sampling-based approaches"
+author: "T. Florian Jaeger"
+date: "2/26/2020"
+output: 
+  bookdown::gitbook:
+   lib_dir: assets
+   split_by: none
+   config:
+    toolbar:
+      position: static
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  results = "markup", warning = FALSE, cache = TRUE,
+  fig.align = "center", fig.width = 6.5)
+```
+
+```{r constants, include = F}
+n.samples = 2000
+```
+
+```{r libraries, include = F}
+library("tidyverse")  # dplyr, ggplot2, and more from the tidyverse
+library("magrittr")   # for pipes
+library("boot")       # for automatic bootstrap
+```
+
+# This document
+This document is created in R markdown. R markdown combines text with R code, allowing us to see the code and its output, embedded within the text describing the code. If you have the original R markdown file (file extension .Rmd), you can 'knit' the document into an HMTL, PDF, or Word file. Just be aware that the code executes a good number of sampling-based simulations, and these simulations take some time to complete. The parameter that determines how many samples are used in each of the sampling simulations is `n.samples`. You can change the value of `n.samples` to a small number (e.g., `10`) to speed up compilation.
+
+# Recap of some terminology
+In BCS, the goal of conducting experiments is to advance our understanding of the brain/mind. We aim to test the **predictions** of **theories** or more specific **hypotheses**. These theories typically constitute propositions about causes, and the statistical tests we conduct typically assess the predicted correlations that would result from the hypothesized causal relations. For example, we might hypothesize that our visual systems integrate incoming perceptual inputs with prior expectations. This leads us to predict---skipping over many details here---that more expected (e.g., more frequent) object should be recognized more quickly.
+
+We thus design an experiment, in which we elicit reaction times for visual objects that either occur often in our visual experience (high frequency) or rarely (low frequency). In this example, reaction times are our **dependent variable** or **outcome**, and frequency is an **independent variable** or **predictor** (here we operationalize frequency as a binary predictor: high vs. low frequency). Often we talk about **conditions** of experiments. These conditions are the independent / predictor variables in our analyses. The dependent / outcome variables are derived from the **measures** we collect.
+
+When we analyze data from our experiment, we assume that the reaction time **observations** we obtain constitute a **sample** of the underlying **population** of reaction times. We then use this finite sample to draw **inferences** about the population. For example, a really typical question we ask would be whether the means of the population differ between two conditions. Sticking with our example, we might test our hypothesis about the brain/mind by asking whether we can confidently conclude that reaction times are indeed smaller in for high frequency objects, compared to reactions times for high frequency objects. Either way, this constitutes an inference we're aiming to draw about the world, based on the finite sample of observations we collected in our experiment.
+
+When we ask such a question---e.g., whether reaction times are indeed smaller in for high frequency objects---we typically ask them in the form of "Are reactions times for high frequency objects smaller *on average*?". We thus aim to draw inferences about a statistic (the mean) of the underlying population. This in turn is typically done by looking at the same statistic (the mean) in the *sample*, along with some measure of the **uncertainty** we have about that sample statistic. We have this uncertainty because we believe that our observations constitute measures taken from a **random variable**, so that our observations will be ... well, variable.
+
+## Sampling-based approaches
+
+We can distinguish between two approaches to the statistical inferences scientists try to draw about the world from the samples they obtain in their experiments. For example, how do we quantify the mean difference in reaction time between the high vs. low frequency condition of our example scenario? One approach is analytic, using mathematical knowledge about the distributions of our variables. For example, the mean of the difference between two normally distributed (non-correlated) variables is the difference between the means of the two distributions; the standard deviation of the difference is the square root of the sum of the variances of the two distributions. So if we assume that reaction times (RTs) are normally distributed, and if high frequency objects would lead to an RT distribution with mean 250 and standard deviation 21, and low frequency objects would lead to an RT distribution with mean 293 and standard deviation 32, then the difference between the two RT distributions would be distributed with mean 250 - 293 = ```r 250 - 293``` and standard deviation sqrt(21^2 + 32^2) = ```r sqrt(21^2 + 32^2)```.
+
+The second approach is the **sampling-based approach**. For this approach, we repeatedly draw samples from the two distributions and calculate the difference between each pair of samples (this is not exactly the same use of the word sample as in the previous section where we referred to samples of observations we collect in experiments; but the two uses are related). These differences then form a distribution, and we can get the mean and standard deviation of that distribution. More generally, we can obtain any quantity from the distribution---even more complex ones---by repeatedly sampling from it. As we'll show below, this lets us, for example, construct confidence intervals, or it lets us assess how likely we would be by chance to see the differences we observe in our sample (and thus how informative these differences are). The sampling-based approach is particularly powerful when we do not the analytic solution (or are not sure about it). 
+
+To make this more concrete, let's go through an example. 
+
+# An example problem
+
+```{r, include = F}
+# We will generate some fake data to work with, but you could plug your own real data in here 
+# (and change the code below so that it matches the names of the variables in your data)
+set.seed(123456)
+
+n.subject = 48
+n.trial = 24
+
+# Let's make some (fake) data
+d.orig = 
+  crossing(
+    subject = 1:n.subject,
+    condition = c("low frequency","high frequency"),
+    trial = 1:n.trial
+  ) %>%
+  mutate(
+    muLogOddsCorrect = qlogis(case_when(
+      condition == "low frequency" ~ .78,
+      condition == "high frequency" ~ .91
+    )),
+    muLogRT = case_when(
+      condition == "low frequency" ~ 6.5,
+      condition == "high frequency" ~ 6.1
+    )
+  ) %>%
+  group_by(subject, condition) %>%
+  mutate(
+    muLogOddsCorrect.bySubject = rnorm(1, 0, .75),
+    muLogRT.bySubject = rnorm(1, 0, .4)
+  ) %>%
+  rowwise() %>%
+  mutate(
+    correct = rbinom(1, 1, plogis(muLogOddsCorrect + muLogOddsCorrect.bySubject)),
+    RT = round(100 + exp(rnorm(1, muLogRT + muLogRT.bySubject - .15 * correct, .1)), 3)
+  ) %>%
+  as_tibble() %>%
+  mutate_at(c("condition", "subject"), factor) %>%
+  arrange(subject, trial, condition)
+
+d = d.orig %>%
+    select(-starts_with("mu"))
+```
+
+Let's say we have an experiment with `r n.subject` subjects, in which each subject saw `r n.trial` trials for each of two conditions (for a total of `r n.trial * 2` trials per subject). On each trial, subjects saw a picture of an object and had to decide as quickly and accurately whether the picture depicts something animate (a living thing) or not. The two conditions manipulate whether the object is something that we see frequently in our live ("high frequency") or not ("low frequency"). We collected both reaction times of subjects' responses (`RT`), and whether those responses were accurate (`correct`). We hypothesize that more frequent objects will be responded to more quickly and accurately. 
+
+Here's the top of that data table:
+
+```{r, echo=F}
+d
+```
+
+And here is a summary. We can see that reaction times vary quite a bit, and that accuracy is (unsurprisingly) relatively high:
+
+```{r, echo=F}
+summary(d)
+```
+
+To test our hypothesis we want to be able to visualize the mean reaction times (RTs) and accuracy for each condition, and we want to be able to assess whether the differences between the conditions are meaningful. For example, we might want to test whether the differences between conditions are "significant".
+
+## Visualization
+
+The first thing we do is to visualize our data by condition. Before we worry about how to best do this for all of our subjects, let's start by plotting the data for just a single subject. The following plot shows the mean RT and accuracy for subject 1:
+
+```{r, echo=F, fig.show='hold', out.width="50%", fig.align = "default"}
+theme_set(theme_bw())
+
+d %>%
+  filter(subject == 1) %>%
+  ggplot(aes(x = condition, y = RT)) +
+  stat_summary(fun = mean, geom = "point", size = 1, color = "blue")
+```
+
+These plots show that the RTs and accuracy differ between conditions, but not whether these differences are meaningful. In particular, there is no measure of uncertainty. So let's add some confidence intervals. For example, we could calculate confidence intervals based on the assumption of normality, in which case the 95\% confidence interval is about +/- 1.96-times the standard error of the mean around the mean. Let's also add all the underlying data from subject 1:
+
+```{r, echo=F, fig.show='hold', out.width="50%", fig.align = "default"}
+theme_set(theme_bw())
+
+d %>%
+  filter(subject == 1) %>%
+  ggplot(aes(x = condition, y = RT)) +
+  geom_point(alpha = .3) +
+  stat_summary(fun.data = mean_cl_normal, geom = "pointrange", size = 1, color = "blue")
+```
+
+The difference for RTs looks rather interpretable, suggesting a very large difference between the two conditions in subject 1. As a rule of thumb, since neither of the confidence intervals for the two conditions contains the mean of the other condition, we would expect that a test (that is also based on the assumption of normality) would return a significant difference in RTs between the high vs. low frequency conditions for subject 1. 
+
+## How was the confidence interval in the above figure obtained? 
+
+One way to obtain the confidence interval shown above is *parametrically*. Under the assumption of normality the 95\% confidence interval is +/- 1.96-times the standard error of the mean, and the standard error is the standard deviation divided by the square root of the number of observations *n*, SE = SD / sqrt(n). As the following table shows, the CIs obtained from this formula match those shown in the above figure:
+
+```{r}
+d1 = d %>% 
+  filter(subject == 1) %>%
+  group_by(condition) %>%
+  summarise_at(vars(RT), .funs = list("mean" = mean, "sd" = sd)) %>%
+  mutate(se = sd / sqrt(n.trial),
+         ci.lower = mean - 1.96 * se,
+         ci.upper = mean + 1.96 * se)
+
+d1
+```
+
+But **how would we go about calculating a 95\% confidence interval around each mean under the assumption of normality if we *didn't* already know that it's 1.96-times the standard error of the mean?** (as is the case for many non-trivial statistical questions) This is where a sampling-based approaches comes in. We could repeatedly sample the same amount of data from a normal distribution with the same mean and standard deviation as observed for subject 1:
+
+```{r, echo = T}
+# Let's 
+#   1) draw 24 samples of RTs for both the high and the low frequency distribution based on the mean and SD 
+#      observed in subject 1.
+#   2) take the mean
+#   3) repeat that 10000 times
+#   4) Look at the distribution of those means across the 10000 samples
+d.RT = 
+  plyr::rdply(10000,
+              mean(rnorm(n = 24, 
+                         mean = as.numeric(d1[d1$condition == "high frequency", "mean"]), 
+                         sd = as.numeric(d1[d1$condition == "high frequency", "sd"])))) %>%
+  mutate(condition = "high frequency") %>%
+  rbind(
+    plyr::rdply(10000,
+                mean(rnorm(n = 24, 
+                           mean = as.numeric(d1[d1$condition == "low frequency", "mean"]), 
+                           sd = as.numeric(d1[d1$condition == "low frequency", "sd"])))) %>%
+      mutate(condition = "low frequency")
+  ) %>%
+  rename(mean_RT = V1)
+
+d.RT %>%
+  ggplot(aes(x = mean_RT)) + geom_histogram()
+
+d.RT %>%
+  group_by(condition) %>%
+  summarise_at(vars(mean_RT), 
+               .funs = list("mean_of_mean" = mean, "sd_of_mean" = sd, 
+                            "ci.lower" = function(x) quantile(x, probs = .025),
+                            "ci.upper" = function(x) quantile(x, probs = .975))) 
+```
+
+For comparison, here are the means and confidence intervals we obtained from the formula for normally-distributed means above:
+
+```{r}
+d1
+```
+
+See how the standard deviation of the mean across the 10000 samples is the same as the standard error of the mean that we obtained based on SE = SD / sqrt(n). But the sampling-based approach gave us these numbers without requiring us to know this formula.
+
+## Using the sampling-based approach to determine whether the difference between high vs. low frequency is significant
+
+We can use the same approach to ask whether the difference between high and low frequency RTs is significant. For this, we again sample 10000 replications of our data. This time we want to know whether difference between any random combination of a high and low frequency RT is significant.
+
+
+```{r, echo = T}
+# 1) We generate 24 observations each for the high and low frequency condition.
+# 2) We subtract the means of the two conditions from each other
+# 3) We repeat the process 10000 times
+# 4) We look at the distribution of the differences across the 10000 samples
+
+d.diff = 
+  plyr::rdply(10000,
+              mean(rnorm(n = 24, 
+                         mean = as.numeric(d1[d1$condition == "high frequency", "mean"]), 
+                         sd = as.numeric(d1[d1$condition == "high frequency", "sd"]))) - 
+                mean(rnorm(n = 24, 
+                           mean = as.numeric(d1[d1$condition == "low frequency", "mean"]), 
+                           sd = as.numeric(d1[d1$condition == "low frequency", "sd"])))) 
+d.diff %<>%
+  summarise_at(vars(V1), .funs = list("mean_of_diff_of_means" = mean, 
+                                      "sd_of_diff_of_means" = sd)) 
+d.diff
+```
+
+The fact that the mean difference is more than twice (well, 1.96-times) its own standard deviation away from zero tells us that 0 is not contained in the 95\% confidence interval. We would thus feel confident rejecting the null hypothesis that the difference between the high and low frequency condition is 0. In other words, we would say that subject 1 exhibits a significant effect of frequency on processing times. Indeed, the $t$-statistic of an ordinary $t$-test is nothing else but the distance of the mean from zero in terms of its own standard error, i.e, $t=mean / se(mean)=$ `r d.diff[,1]` / `r d.diff[,2]` = `r d.diff[,1] / d.diff[,2]`---a highly significant $t$-value.
+
+
+In this case, we could have obtained that same conclusion analytically without sampling. The distribution of the difference between two normal distributions is a normal distribution with the mean of the difference equal to the difference between the means (i.e., `r d1[d1$condition == "high frequency", "mean"]` - `r d1[d1$condition == "low frequency", "mean"]` = `r d1[d1$condition == "high frequency", "mean"] - d1[d1$condition == "low frequency", "mean"]`), and the standard deviation of the difference equal to the square root of the sum of variances (i.e., sqrt(`r d1[d1$condition == "high frequency", "sd"]`^2 + `r d1[d1$condition == "low frequency", "sd"]`^2 ) = `r sqrt(d1[d1$condition == "high frequency", "sd"]^2 + d1[d1$condition == "low frequency", "sd"]^2)`), so that the standard error of the mean difference would then be `r sqrt(d1[d1$condition == "high frequency", "sd"]^2 + d1[d1$condition == "low frequency", "sd"]^2)` / sqrt(`r n.trial`) = `r sqrt(d1[d1$condition == "high frequency", "sd"]^2 + d1[d1$condition == "low frequency", "sd"]^2) / sqrt(n.trial)`---matching what we obtained by sampling.
+Similarly, the t-test applied to the data from subject 1 yields a result closely resembling that obtained through sampling:
+
+```{r}
+t.test(formula = RT ~ condition,
+       data = d %>% filter(subject == 1),
+       paired = F, var.equal = T)
+```
+
+# Removing parametric assumptions: Bootstrap
+
+So far we have seen how to apply sampling *parametrically*. Parametric assumptions---such as the assumption of Normality---can be wrong and this can lead to non-sensical conclusions. This becomes apparent when we look at the accuracy, rather than RTs, of subject 1:
+
+```{r, echo=F, fig.show='hold', out.width="50%", fig.align = "default"}
+theme_set(theme_bw())
+
+d %>%
+  filter(subject == 1) %>%
+  ggplot(aes(x = condition, y = correct)) +
+  geom_point(alpha = .3) +
+  stat_summary(fun.data = mean_cl_normal, geom = "pointrange", size = 1, color = "blue") +
+  scale_y_continuous("Accuracy")
+```
+
+Note that the 95\% confidence interval for the accuracy plot extends beyond an accuracy of 1! This is because we *assumed* normality, but proportions are often not normally distributed. Let's ignore that for now. S
+
+One big advantange of the sampling-based approach is that we can remove these assumptions and use *non-parametric* sampling methods. Here, we use the so-called **bootstrap**. When we bootstrap confidence intervals, we essentially re-sample our data (over and over again) to estimate the confidence interval. Just like other sampling-based approaches, bootstrap can be applied to estimate any type of property of our distribution, not just confidence intervals. Unlike the parametric approach, the bootstrap does not assume that our data follows the Normal distribution, and this results in confidence intervals that are more appropriate:
+
+```{r, echo=F, fig.show='hold', out.width="50%", fig.align = "default"}
+theme_set(theme_bw())
+
+p = d %>%
+  filter(subject == 1) %>%
+  ggplot(aes(x = condition, y = RT)) +
+  geom_point(alpha = .3) +
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", size = 1, color = "blue")
+
+p
+p %+% aes(y = correct) +
+  scale_y_continuous("Accuracy")
+```
+
+Notice, in particular, the **asymmetry in the distance of the upper and lower end of the confidence interval from the mean**.
+
+## How was the confidence interval in the above figure obtained? 
+
+Bootstrapping works almost exactly as the sampling-based approach discussed above, except that we do not assume normality. Instead of sampling from a normal distribution, we sample from the actually observed data (with replacement). Here's an example of drawing *one* bootstrap sample form subject 1. Notice how some trials appear multiple times (and others don't appear at all), for the same number of total trials as in the original experiment:
+
+```{r}
+d1 = d %>% 
+  filter(subject == 1)
+
+d1 %>% 
+  group_by(condition) %>%
+  sample_n(n.trial, replace = T)
+```
+
+Just as we took many thousands of parametric samples above, we can repeat the bootstrap sampling. Here is the code to obtain the 95\% confidence intervals
+
+```{r, echo = T}
+# 1) We *re-sample (with replacement) * 24 observations each for the high and low frequency condition *from the original data*.
+# 2) We take the mean for each condition
+# 3) We repeat the process 10000 times
+# 4) We look at the distribution of the differences across the 10000 samples
+
+d.RT.boot = 
+  plyr::rdply(10000,
+              d1 %>% 
+                group_by(condition) %>%
+                sample_n(n.trial, replace = T) %>%
+                summarise_at(vars(correct), 
+                             .funs = list("mean" = mean)))
+
+d.RT.boot %<>%
+  group_by(condition) %>%
+  summarise_at(vars(ends_with("mean")), 
+               .funs = list("mean_of_mean" = mean, 
+                            "ci.lower" = function (x) quantile(x, probs = c(.025)),
+                            "ci.upper" = function (x) quantile(x, probs = c(.975))))
+  
+d.RT.boot
+```
+
+This replicates the confidence interval shown in the figure above, including the asymmetry around the mean. **Note *why* this procedure is guaranteed to never yield confidence intervals that fall outside of the 0 to 1 range**: since we are resampling from the actually observed data, it is impossible that the mean of any particular re-sampled sample will be outside of the 0 to 1 range.
+
+And here is the code paralleling the parametric sampling of the mean difference between conditions for both RTs and accuracy (compare it to the parametric code above). For RTs, the parametric sampling-based estimates reported above relatively closely resemble the non-parametric bootstrapped estimates obtained here, though there are some differences. These differences stem from the fact that the RT data are actually *not* normally distributed---contrary to what we assumed above. While the violation of normality is milder for the RT data than for the accuracy data, it still exists and affected the parametric sampling-based estimates (which were `r d.diff[,1]` +/ 1.96 * `r d.diff[,2]` = `r d.diff[,1] - 1.96 * d.diff[,2]` to `r d.diff[,1] + 1.96 * d.diff[,2]`).
+
+```{r, echo = T}
+# 1) We *re-sample (with replacement) * 24 observations each for the high and low frequency condition *from the original data*.
+# 2) We subtract the means of the two conditions from each other
+# 3) We repeat the process 10000 times
+# 4) We look at the distribution of the differences across the 10000 samples
+
+d.diff.boot = 
+  plyr::rdply(10000,
+              d1 %>% 
+                group_by(condition) %>%
+                sample_n(n.trial, replace = T) %>%
+                summarise_at(vars(RT, correct), 
+                             .funs = list("diff" = mean)) %>%
+                ungroup() %>%
+                summarise_at(vars(ends_with("diff")), function(x) -diff(x)))
+
+d.diff.boot %<>%
+  select(-.n) %>%
+  pivot_longer(ends_with("diff"), names_pattern = "(.*)_diff") %>%
+  group_by(name) %>%
+  summarise_all(.funs = list("mean_of_diff_of_means" = mean, 
+                             "ci.lower" = function (x) quantile(x, probs = c(.025)),
+                             "ci.upper" = function (x) quantile(x, probs = c(.975))))
+d.diff.boot
+```
+
+Bootstrap is sometimes described as making no assumptions. That is wrong. It makes very strong assumptions: that the data you have observed in your experiment (or whatever data set you are bootstrapping over) is representative the underlying population. Indeed, that data set exhaustively describes all possible events that can occur, unlike in parametric simulation approaches. This assumption is less and less problematic the more data we have that we are sampling from (a total of two times `r n.trial` data points from subject 1 would *not* be considered enough). 
+
+# Grouped data
+
+The confidence intervals shown above are obtained under the assumption that the underlying population that we are drawing inferences about is data from subject 1. So, we could now conclude that, *for subject 1*, the RTs for high frequency objects are significantly smaller than for low frequency objects. And, for subject 1, we would not conclude that there is a significant difference in accuracy for low and high frequency objects.
+
+Ultimately though, we tend to be interested in drawing inferences about *people* in general---i.e., across subject, which we believe to have randomly sampled from the overall population. If we want to ask the same question across *all* subjects, we have to take into account that the observations from one subject are not independent of each other. There are many sophisticated ways to do so. One simple way to do so is to calculate the confidence over *by-subject* averages: we first aggregate (summarize) the data down to the subject-level, so that we have one data point per condition per subject; then we ask whether the mean of those by-subject means differs between the two conditions. This way we lose some information, but we are being appropriately conservative since the mean of each condition now is based on only one data point per subject.
+
+The following plot shows all the raw data, the by-subject means (connected by a line for each subject), and the mean and 95\% bootstrapped confidence interval of the by-subject means.
+
+```{r, echo=F, fig.show='hold', out.width="50%", fig.align = "default", message=F}
+theme_set(theme_bw())
+
+p = d %>%
+  ggplot(aes(x = condition, y = RT, color = subject)) +
+  geom_point(alpha = .1, position = position_jitter(height = 0)) +
+  geom_point(data = 
+               d %>% 
+               group_by(subject, condition) %>%
+               summarise(RT = mean(RT), correct = mean(correct)),
+             size = 2, 
+             alpha = .8) +
+  geom_line(data = 
+              d %>% 
+              group_by(subject, condition) %>%
+              summarise(RT = mean(RT), correct = mean(correct)),
+            aes(group = paste(subject)),
+            alpha = .8) +
+  stat_summary(data = 
+                 d %>% 
+                 group_by(subject, condition) %>%
+                 summarise(RT = mean(RT), correct = mean(correct)),
+               fun.data = mean_cl_boot, geom = "pointrange", size = 1, color = "black") +
+  theme(legend.position = "none")
+
+p
+p %+% aes(y = correct) +
+  scale_y_continuous("Accuracy")
+```
+
+The CIs shown in the above plot are based only on the distribution of the by-subject means within each condition---we estimated the confidence separaretly for each condition. If we want to instead capture that subjects might differ in the extent to which they exhibit an effect of frequency, we should look at the distribution of *by-subject differences* in the means for the high vs. low frequency condition. The colored lines between the left and right columns of the above plots provide an initial visualization of these pair differences. We can see, for example, that there is between-subject variability in the effect of low and high frequency (at least when we look at these differences in raw RTs) and even more between-subject variability in accuracy.
+
+We thus calculate the by-subject difference in the condition means. In this revised plot, we want to know whether the 95\% bootstrapped confidence interval does contain 0. If that is not the case, we would conclude that the effect of frequency is significant after taking into account that our data comes from multiple subjects (assumed to be sampled from the same underlying population that we aim to draw conclusions about).
+
+```{r, echo=F, fig.show='hold', out.width="50%", fig.align = "default", warning=F, message=F}
+theme_set(theme_bw())
+
+p = d %>%
+  group_by(subject, condition) %>%
+  summarise(RT = mean(RT), correct = mean(correct)) %>%
+  group_by(subject) %>%
+  summarise(RT = diff(RT), correct = diff(correct), condition = "difference") %>%
+  ggplot(aes(x = condition, y = RT, color = subject)) +
+  geom_point(size = 2, 
+             alpha = .8) +
+  stat_summary(fun.data = mean_cl_boot, geom = "pointrange", size = 1, color = "black") +
+  scale_y_continuous("Difference in RT\n(low vs. high frequency)") +
+  theme(legend.position = "none")
+
+p
+p %+% aes(y = correct) +
+  scale_y_continuous("Difference in accuracy\n(low vs. high frequency)")
+```
+
+
