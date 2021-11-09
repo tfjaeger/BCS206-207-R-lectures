@@ -45,7 +45,11 @@ You might prefer to instead (or also) have a manuscript that covers this topic i
 ## Important concepts and terminology
 In the brain and cognitive sciences, the goal of conducting experiments is to advance our understanding of the brain/mind. We aim to test the **predictions** of **theories** or more specific **hypotheses**. These theories typically constitute propositions about causes, and the statistical tests we conduct typically assess the predicted correlations that would result from the hypothesized causal relations. These correlations are assessed on some finite amount of data from *samples* we've obtained from the underyling *population* of interest.
 
-To illustrate this with an example, remember the experiment on visual crowding from last week. We hypothesized that (H1) performance in a number recognition task increases with increasing size of the number and that (H2) performance decreases in visually crowded displays. We elicited two types of **dependent variables** or **outcomes**: response time and response accuracy. To turn our hypotheses into predictions, we implicitly assumed **linking hypotheses** that link the abstract theoretical construct ("performance") to the specific dependent measures we employ in our experiment: higher performance $\rightarrow$ faster processing $\rightarrow$ response times and higher performance $\rightarrow$ higher accuracy. 
+To illustrate this with an example, remember the experiment on visual crowding introduced in a [previous lecture](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2021-2022/scripts/R/3a-Data-wrangling-and-visualization.pdf). To recap that experiment briefly:
+
+> On each trial, subjects had to fixate on a fixation cross. The fixation cross was then replaced by a small small number, and subjects had to quickly answer whether they saw the number "3" or "8" (making this a two-alternative forced choice, 2AFC). Half of the trials displayed "3", half displayed "8". Within subject, the experiment manipulated two variables, the size of the number (1, 2, or 4) and whether the number was surrounded by four other numbers above, below, left, and right of it (hard) or not (easy). The presence of other numbers presented close to the target number is known to make recogntion of the target number harder---an effect known as "visual crowding". For each trial, the software recorded whether the subject's response was correct (1 = correct; 0 = incorrect) and the reaction time for the response (RT).
+
+We hypothesized that (H1) performance in a number recognition task increases with increasing size of the number and that (H2) performance decreases in visually crowded displays. We elicited two types of **dependent variables** or **outcomes**: response time and response accuracy. To turn our hypotheses into predictions, we implicitly assumed **linking hypotheses** that link the abstract theoretical construct ("performance") to the specific dependent measures we employ in our experiment: higher performance $\rightarrow$ faster processing $\rightarrow$ response times and higher performance $\rightarrow$ higher accuracy. 
 
 To test the resulting predictions, we manipulated both the number size (size 1, 2, 4) and the visual crowding (easy: no crowding, hard: numbers flanking the target number on all sides). Thus size and crowding are our **independent variables** or **predictors**.
 
@@ -178,7 +182,7 @@ Of course, for a real-life example we won't know the true mean. But we will stil
 
 ## Parametric confidence intervals
 
-When the distribution of a variable is known---or if we are willing to make assumptions about that distributions---there might be a known analytic solution to calculating the confidence intervals. For example, under the assumption that an outcome $y$ are normally distributed around an unknown mean $mu$ the 95% CI around the *sample* mean $mean_y$ is:
+When the distribution of a variable is known---or if we are willing to make assumptions about that distributions---there might be a known analytic solution to calculating the confidence intervals. For example, under the assumption that an outcome $y$ are normally distributed around an unknown mean $\mu$ the 95% CI around the *sample* mean $mean_y$ is:
 
 $mean_y \pm 1.96 * \frac{SD_y}{\sqrt{n}}$
 
@@ -207,11 +211,12 @@ ggplot(
   scale_x_continuous("value") +
   scale_y_continuous("density")
 ```
+
 This approach to CIs is called parametric because the CIs are obtained under the assumption of a specific parametric distribution. For example, the normal distribution is a parametric distribution, a distribution specified by parameters (the mean and the standard deviation).
 
 Notice two important properties of the CIs defined above, both due to the term $\frac{SD_y}{\sqrt{n}}$ (the so-called **standard error of the sample mean**): 
 
- * the more variable the data ($SD_y$), the larger/wider the CIs
+ * the more variable the observation in the sample ($SD_y$), the larger/wider the CIs
  * the more sample data we have, the smaller/more narrow the CIs
  
 To make this more concrete, consider the experiment from last week. Let's calculate the 95% CIs for the six conditions defined by crossing the three number sizes and two crowding conditions. We'll do so for subject 1.
@@ -360,13 +365,13 @@ d %>%
   coord_cartesian(ylim = c(0.75,1))
 ```
 
-Bootstrap is thus a powerful (and ultimately simple) option for obtained confidence intervals.One important limitation to keep in mind about the bootstrap though is that it is utterly dependent on the representativeness of the sample data. One direct consequence of that is that bootstrapped CIs become more robust the more sample data we have. In the Spring semester, we will return to this and other sampling-based approaches to statistics. 
+Bootstrap is a powerful (and ultimately simple) option for obtained confidence intervals. One important limitation to keep in mind about the bootstrap though is that it is utterly dependent on the representativeness of the sample data. One direct consequence of that is that bootstrapped CIs become more robust the more sample data we have. If you're interested in learning more about bootstrap and sampling-based approaches to statistics, check out the lecture on sampling-based approaches in the same [Github repo that this lecture come from](https://github.com/tfjaeger/BCS206-207-R-lectures/tree/2021-2022/scripts/R).
 
 # Confidence intervals for grouped (repeated measures) data
 
 So far we have obtained CIs only for data from a single subject. When we have repeated measures from multiple subjects, we can still use the approaches discussed here. We should, however, apply them to the *by-subject means* rather than the raw data to obtain visualizations that approximate appropriately conservative (i.e., wide) CIs. 
 
-Consider, for example, that we would like to plot the CIs for the same six conditions analyzed above but would like to do so for all subjects together rather than just subject 1. In that case, we should first summarize the data down to one mean for each of the six conditions for each subject, and then obtain CIs for the distribution of these by-subject means:
+Consider, for example, that we would like to plot the CIs for the same six conditions analyzed above but would like to do so for all subjects together rather than just subject 1. In that case, we should first summarize the data down to one mean for each of the six conditions for each subject, and then obtain CIs for the distribution of these by-subject means. Notice how the CIs are now considerably larger. That is because they now reflect our uncertainty about not just subject 1 but about the mean across *all* subjects (and we are more uncertain at this level of the data because subjects vary substantially from each other in this example---as is also typically the case in many real experiments).
 
 ```{r, echo=T}
 d %>%
