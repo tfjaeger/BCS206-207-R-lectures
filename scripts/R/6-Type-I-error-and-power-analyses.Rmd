@@ -3,6 +3,7 @@ title: "Sampling-based Type I and power analyses"
 author: "T. Florian Jaeger"
 date: "3/15/2021"
 output: 
+  pdf_document: default
   bookdown::gitbook:
    lib_dir: assets
    split_by: none
