@@ -210,12 +210,13 @@ d.type1 =
     .n = n.samples,
     # What we want to be repeated:
     function(i) {
-      dd = try(
+      dd <- try(
         make_single_subject_data(n.trial, d.pars)  %>%
-          do_test(), silent = TRUE)
+          do_test(), 
+        silent = TRUE)
       # t.test sometimes fail. I'm catching those cases
       # and setting the p.values to NA
-      if (class(dd) == "try-error")
+      if (any(class(dd) == "try-error"))
         dd = data.frame(
           RT.p.value = NA,
           Accuracy.p.value = NA
@@ -294,7 +295,7 @@ d.type1.true =
       dd = try(
         make_from_original_data(n.trial, which.subject = which.subj) %>%
           do_test(), silent = TRUE)
-      if (class(dd) == "try-error")
+      if (any(class(dd) == "try-error"))
         dd = data.frame(
           RT.p.value = NA,
           Accuracy.p.value = NA
@@ -326,7 +327,7 @@ bootstrap_single_subject_data = function(n.trial, d) {
 bootstrap_single_subject_data(n.trial, d.subj)
 ```
 
-Applying the same steps (iii) - (v) as above, we find that the Type I error rate of both analyses seems acceptable:
+Applying the same steps (iii) - (v) as above, we find that the Type I error rate of both analyses seems similar to what we obtained above:
 
 ```{r}
 d.type1.boot = 
@@ -335,7 +336,7 @@ d.type1.boot =
     function(i) {
       dd = try(bootstrap_single_subject_data(n.trial, d.subj) %>%
                  do_test(), silent = TRUE)
-      if (class(dd) == "try-error")
+      if (any(class(dd) == "try-error"))
         dd = data.frame(
           RT.p.value = NA,
           Accuracy.p.value = NA
@@ -398,7 +399,7 @@ sample_power = function(d.pars, n.trials, effects, n.samples = n.samples) {
             dd = try(
               make_single_subject_data(n.trial, d.pars, effect = effect)  %>%
                 do_test(), silent = TRUE)
-            if (class(dd) == "try-error")
+            if (any(class(dd) == "try-error"))
               dd = data.frame(RT.p.value = NA)
             return(dd)
           }) %>%
@@ -408,18 +409,22 @@ sample_power = function(d.pars, n.trials, effects, n.samples = n.samples) {
   
   d %<>%
     group_by(effect, n.trial) %>%
-    get_power()
-  
+    dplyr::mutate_at(
+    vars(ends_with("p.value")), 
+    function(x) x < .05) %>%
+    rename_all(.funs = ~ gsub("p\\.value", "Power", .x))
+
   return(d)
 }
 
-sample_power(
+temp <- sample_power(
   n.trials = c(12, 24, 48, 96),
   effects = c(25, 50, 100),
   d.pars = d.pars,
-  n.samples = 200
-) %>%
-  ggplot(aes(x = n.trial, y = RT.Power, color = factor(effect))) +
+  n.samples = 200) 
+
+temp %>%
+  ggplot(aes(x = n.trial, y = ifelse(RT.Power, 1, 0), color = factor(effect))) +
   stat_summary(fun.data = mean_cl_boot, geom = "pointrange") +
   stat_summary(fun = mean, geom = "line") +
   # Adding a line to indicate the 'power' we'd get from the Type I error
@@ -504,7 +509,7 @@ sample_power = function(n.subjects, n.trials, n.samples = n.samples) {
                                       effect.RT = 25,
                                       effect.correct = 1)  %>%
                 do_multi_subject_test(), silent = TRUE)
-            if (class(dd) == "try-error")
+            if (any(class(dd) == "try-error"))
               dd = data.frame(RT.p.value = NA)
             return(dd)
           }) %>%
