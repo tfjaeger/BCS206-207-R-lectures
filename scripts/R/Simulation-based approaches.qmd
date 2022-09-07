@@ -154,7 +154,7 @@ n.trial = 24
 
 ```{r}
 # Let's make some (fake) data
-d.orig = 
+d.orig <- 
   crossing(
     subject = 1:n.subject,
     condition = c("low frequency","high frequency"),
@@ -184,7 +184,7 @@ d.orig =
   mutate_at(c("condition", "subject"), factor) %>%
   arrange(subject, trial, condition)
 
-d = d.orig %>%
+d <- d.orig %>%
     select(-starts_with("mu"))
 ```
 
@@ -207,7 +207,8 @@ which.subj = 3
 #| code-fold: true
 #| code-summary: "expand for full code"
 #| fig-align: "center"
-d.pars <- d %>% 
+d.pars <- 
+  d %>% 
   filter(subject == which.subj) %>%
   summarise(
     across(
@@ -241,8 +242,8 @@ make_single_subject_data <- function(n.trial, d.pars) {
     # the accuracy and RTs. d.pars is a data frame with the mean
     # and SD of the RT and accuracy distributions we want to sample.
     mutate(
-      correct = rbinom(nrow(.), 1, d.pars$correct_mean[1]),
-      RT = rnorm(nrow(.), d.pars$RT_mean[1], d.pars$RT_sd[1])) %>%
+      correct = rbinom(nrow(.), 1, d.pars$mean_correct[1]),
+      RT = rnorm(nrow(.), d.pars$mean_RT[1], d.pars$sd_RT[1])) %>%
     # Do some formatting
     as_tibble() %>%
     mutate_at(c("condition", "subject"), factor) %>%
@@ -381,7 +382,7 @@ get_TypeI <-
         "convergence" = ~ sum(!is.na(.x)) / length(.x),
         "Type_I_error" = ~ round(mean(.x < .05, na.rm = T), 3)),
     .names = "{.fn}_{.col}")) %>%
-  rename_all(.funs = ~ gsub("p\\.value_", "", .x))
+  rename_all(.funs = ~ gsub("p\\.value", "", .x))
 ```
 
 ```{r}
@@ -419,7 +420,7 @@ For example, we assumed that RTs are drawn from a normal distribution, but that 
   
 - We can compare the Type I error rate of the $t$-test obtained above to the Type I error rate of the same $t$-test if the data is generated following the ground truth (see [Git repo](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2021-2022/scripts/R/6-Type-I-error-and-power-analyses.Rmd)).
 
-## What if we don't know the ground truth? Bootstrap!
+## What if we don't know the ground truth? 
 
 - IRL, we rarely know the ground truth. How then, can we avoid problematic assumptions? 
 - No magic bullet, but **non-parametric bootstrap** avoids specific parametric assumptions.
@@ -443,14 +444,16 @@ bootstrap_single_subject_data = function(n.trial, d) {
 }
 ```
 
+## What if we don't know the ground truth? 
+
 - Applying the same steps 3 and 4 as above, we find:
 
 ```{r}
-d.type1.boot = 
+d.type1.boot <- 
   plyr::rdply(
     .n = n.samples,
     function(i) {
-      dd = try(bootstrap_single_subject_data(n.trial, d.subj) %>%
+      dd = try(bootstrap_single_subject_data(n.trial, d) %>%
                  do_test(), silent = TRUE)
       if (any(class(dd) == "try-error"))
         dd = data.frame(
@@ -464,3 +467,5 @@ d.type1.boot %>%
   get_TypeI()
 ```
 
+- Improving the Type I error rate for RTs by bringing it closer to .05.
+- Type I error rate for accuracy remains conservative. $t$-tests are not suited for such data.
