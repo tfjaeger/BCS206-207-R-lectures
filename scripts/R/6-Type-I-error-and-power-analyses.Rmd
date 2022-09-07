@@ -100,16 +100,17 @@ The basic idea of the sampling-based approach to Type I error or power analysis 
 The only difference between Type I error and power simulations is in step (i)---whether we assume a null effect or an effect different from zero. If we generate the data under the assumption of a null effect, then the proportion of significant effects in step (v) provides an estimate of the Type I error rate. If, on the other hand, we generate the data under a non-null effect, then the proportion of significant effects in step (v) provides an estimate of the power to detect an effect of that size.
 
 ## Parametrically estimating Type I error
+
 ```{r, include=FALSE}
 # Which subject is chosen for simulation?
 which.subj = 3
 ```
 
-Let's say we want to analyze both the RT and the accuracy data from our experiment with a $t$-test. Being conservative researchers, we are interested in estimating the Type I error rate of this approach. We don't want to be anti-conservative, as this would mean we might draw conclusions that are unlikely to hold, and describe result patterns that are unlikely to replicate. To illustrate this process, we again start with a scenario in which we have data from only one subject )this time, we'll go with Subject ```r which.subj```). We first get the mean and SD for both RTs and accuracy from our data. 
+Let's say we want to analyze both the RT and the accuracy data from our experiment with a $t$-test. Being conservative researchers, we are interested in estimating the Type I error rate of this approach. We don't want to be anti-conservative, as this would mean we might draw conclusions that are unlikely to hold, and describe result patterns that are unlikely to replicate. To illustrate this process, we again start with a scenario in which we have data from only one subject (this time, we'll go with Subject ```r which.subj```). We first get the mean and SD for both RTs and accuracy from our data. 
 
 ### An example
 
-If we apply a standard $t$-test to the original RT and accuracy data, we find a (highly) significant diffference in RTs but not in accuracy:
+If we apply a standard $t$-test to the original RT and accuracy data, we find a (highly) significant difference in RTs but not in accuracy:
 
 ```{r, echo=FALSE}
 d.subj = d %>% filter(subject == which.subj)

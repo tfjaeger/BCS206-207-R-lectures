@@ -1,0 +1,403 @@
+---
+title: "BCS 519: Simulation-based approaches"
+author: Florian Jaeger
+email: fjaeger@ur.rochester.edu
+format: 
+  revealjs:
+    transition: slide
+    background-transition: fade
+    theme: [night, custom.scss]
+editor: visual
+editor_optons:
+  canonical: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  results = "markup", warning = FALSE, cache = TRUE,
+  fig.align = "center", fig.width = 6.5)
+```
+
+```{r constants, include = F}
+n.samples = 2000
+```
+
+```{r libraries, include = F}
+library("tidyverse")  # dplyr, ggplot2, and more from the tidyverse
+library("magrittr")   # for pipes
+library("boot")       # for automatic bootstrap
+```
+
+## Imagine 
+
+:::{.incremental}
+
+- You have 1 coin. You want to know whether it's biased.
+
+  + You flip the coin 100,000 times, and each of the two sides occurred 50,000 times. Is the coin biased?
+  + You flip the coin 100,000 times, and side A occurred 99,000 times, side B occurred 1,000 times each. Is the coin biased?
+
+- Easy, right?
+:::
+
+## Imagine *a little harder* ## {auto-animate="true"}
+
+:::{.incremental}
+
+- You roll the die 40 times, with the following outcome: side A occurred 26 times, side B occurred 14 times. Is the coin biased? 
+
+- How might you determine the answer?
+
+  - Analytically. For this scenario, there is a known analytical solution, and it's available, e.g., through a $\chi^2$ test.
+ 
+:::
+
+## Imagine *a little harder* ## {auto-animate="true"}
+
+- You roll the die 40 times, with the following outcome: side A occurred 26 times, side B occurred 14 times. Is the coin biased? 
+
+- How might you determine the answer?
+
+  + Analytically. For this scenario, there is a known analytical solution, and it's available, e.g., through an exact binomial test:
+ 
+```{r, echo=TRUE}
+binom.test(x = c(26, 14), p = c(.5), alternative = "two.sided")
+```
+
+## Imagine *a little harder* ## {auto-animate="true"}
+
+- You roll the die 40 times, with the following outcome: side A occurred 26 times, side B occurred 14 times. Is the coin biased? 
+
+- How might you determine the answer?
+
+  + Analytically. For this scenario, there is a known analytical solution, and it's available, e.g., through a $\chi^2$ test.
+ 
+  + Through simulation.
+
+## A simulation-based approach: How would you proceed? {auto-animate="true"}
+
+- **The null.** An unbiased coin should have equal probabilities to land on either side (.5/.5) 
+
+## A simulation-based approach: How would you proceed? {auto-animate="true"}
+
+- The null
+- **Data generation process for the null.** Resample 40 draws from a fair coin flip.
+  
+```{r}
+generate_data_under_null <- function() rbinom(n = 40, size = 1, prob  = .5)
+generate_data_under_null()
+```
+
+## A simulation-based approach: How would you proceed? {auto-animate="true"}
+
+- The null 
+- Data generation process for the null 
+- **Summarize data down to the key statistic(s):** Here, a sufficient statistic is how often the more frequent outcome occurs.
+
+```{r, echo=TRUE}
+summarize_data <- function(x) x %>% table() %>% max()
+
+generate_data_under_null() %>%
+  summarize_data()
+```
+
+## A simulation-based approach: How would you proceed? {auto-animate="true"}
+
+- The null 
+- Data generation process for the null 
+- Summarize data down to the key statistic(s)
+- **Repeat many times while storing statistic(s):** This forms our baseline/null distribution
+
+```{r, echo=TRUE}
+null_distribution <- replicate(
+  n = 20000, 
+  expr = {generate_data_under_null() %>% summarize_data()})
+head(null_distribution, 20)
+```
+
+## A simulation-based approach: How would you proceed? {auto-animate="true"}
+
+- The null 
+- Data generation process for the null 
+- Summarize data down to the key statistic(s)
+- Repeat many times while storing statistic(s)
+- **Compare how often simulation yielded values at least as extreme as actual observation:** This is our p-value.
+
+```{r, echo=TRUE}
+sum(null_distribution >= 26) / sum(!is.na(null_distribution))
+```
+
+## Using simulations to estimate the Type I error rate of an analysis
+
+1. We generate data under some assumption (e.g., a Normally distributed outcome) or resample it from existing real data *without adding any differences between conditions*.
+2. We apply whatever type(s) of analysis we're interested in estimating Type I error for
+3. We repeat this process many times, each time storing whether the p-value(s) of interest were less than our significance criterion.
+4. The proportion of significant results is the Type I error rate.
+
+## An example problem 
+
+```{r, include = F}
+# We will generate some fake data to work with, but you could plug your own real data in here 
+# (and change the code below so that it matches the names of the variables in your data)
+set.seed(123456)
+
+n.subject = 48
+n.trial = 24
+```
+
+- We have an experiment with `r n.subject` subjects, in which each subject saw `r n.trial` trials for each of two conditions (for a total of `r n.trial * 2` trials per subject). 
+
+- On each trial, subjects saw a picture of an object and had to decide as quickly and accurately whether the picture depicts something animate (a living thing) or not. 
+
+- The two conditions manipulate whether the object is something that we see frequently in our live ("high frequency") or not ("low frequency"). 
+
+- We collected both reaction times of subjects' responses (`RT`), and whether those responses were accurate (`correct`). We hypothesize that more frequent objects will be responded to more quickly and accurately. 
+
+```{r}
+# Let's make some (fake) data
+d.orig = 
+  crossing(
+    subject = 1:n.subject,
+    condition = c("low frequency","high frequency"),
+    trial = 1:n.trial
+  ) %>%
+  mutate(
+    muLogOddsCorrect = qlogis(case_when(
+      condition == "low frequency" ~ .78,
+      condition == "high frequency" ~ .91
+    )),
+    muLogRT = case_when(
+      condition == "low frequency" ~ 6.5,
+      condition == "high frequency" ~ 6.1
+    )
+  ) %>%
+  group_by(subject, condition) %>%
+  mutate(
+    muLogOddsCorrect.bySubject = rnorm(1, 0, .75),
+    muLogRT.bySubject = rnorm(1, 0, .4)
+  ) %>%
+  rowwise() %>%
+  mutate(
+    correct = rbinom(1, 1, plogis(muLogOddsCorrect + muLogOddsCorrect.bySubject)),
+    RT = round(100 + exp(rnorm(1, muLogRT + muLogRT.bySubject - .15 * correct, .1)), 3)
+  ) %>%
+  as_tibble() %>%
+  mutate_at(c("condition", "subject"), factor) %>%
+  arrange(subject, trial, condition)
+
+d = d.orig %>%
+    select(-starts_with("mu"))
+```
+
+## Parametrically estimating Type I error
+
+```{r, include=FALSE}
+# Which subject is chosen for simulation?
+which.subj = 3
+```
+
+- We would like to assess the Type I error rate of subject-wise $t$-tests for both the RT and the accuracy data from our experiment. 
+
+- For this example, we select Subject ```r which.subj```. 
+
+## Data generation {auto-animate="true"}
+
+- Get the mean and SD for both RTs and accuracy
+
+```{r, echo=TRUE}
+#| code-fold: true
+#| code-summary: "expand for full code"
+#| fig-align: "center"
+d.pars = d %>% 
+  filter(subject == which.subj) %>%
+  summarise_at(vars(RT, correct), .funs = list("mean" = mean, "sd" = sd))
+
+d.pars
+```
+## Data generation {auto-animate="true"}
+
+- Get the mean and SD for both RTs and accuracy
+- Function to generate RT and accuracy data from these parameters. 
+
+```{r, echo = T}
+#| code-fold: true
+#| code-summary: "expand for full code"
+#| fig-align: "center"
+make_single_subject_data = function(n.trial, d.pars) {
+  # This generates a data frame with one row for each unique
+  # combination of the variable values handed to it. E.g., if
+  # there are 24 trials (n.trial = 24), we will end up with 
+  # 48 rows (= 1 subject * 2 conditions * 48 trials)
+  crossing(
+    subject = 1,
+    condition = c("low frequency","high frequency"),
+    trial = 1:n.trial
+  ) %>%
+    # Sample the responses / outcomes / dependent variables, i.e.
+    # the accuracy and RTs. d.pars is a data frame with the mean
+    # and SD of the RT and accuracy distributions we want to sample.
+    mutate(
+      correct = rbinom(nrow(.), 1, d.pars$correct_mean[1]),
+      RT = rnorm(nrow(.), d.pars$RT_mean[1], d.pars$RT_sd[1])
+    ) %>%
+    # Do some formatting
+    as_tibble() %>%
+    mutate_at(c("condition", "subject"), factor) %>%
+    arrange(subject, trial, condition)
+}
+```
+
+## Analysis
+
+
+
+
+Here's an example draw from that function, giving us one random instance of our thought experiment. Notice that the RT and accuracy values for the two conditions are not identical. That's to be expected since each trial is generated as a draw from a random variable. The critical question is how this affects our conclusions about significant differences between the means of the conditions.
+
+```{r}
+# Let's sample some data from our parametric generative process (step ii)
+make_single_subject_data(n.trial, d.pars)
+```
+
+For **step (iii)**, we write a function that applies the two $t$-tests to the data set, and stores the $p$-value for each test in a data.frame. To illustrate how this function works, we apply it to the original data and to one example data generated by our data generation process:
+
+```{r}
+# a function that applies a t-test to both the RT and the 
+# accuracy data and then stores the two p-values in a data
+# frame. We'll be using this function for all of the examples
+# below.
+do_test = function(data) {
+  d = tibble(.rows = 1)
+  
+  if ("RT" %in% names(data)) {
+    t1 = t.test(RT ~ condition, data = data, var.equal = T)
+    d %<>%
+      mutate(RT.p.value = t1$p.value)
+  }
+  if ("correct" %in% names(data)) {
+    t2 = t.test(correct ~ condition, data = data, var.equal = T)
+    d %<>%
+      mutate(Accuracy.p.value = t2$p.value)
+  }
+
+  return(d)
+}
+
+# One draw from the data generated under the assumption of a null effect
+# that is then analyzed in our do_test() function.
+make_single_subject_data(n.trial, d.pars) %>%
+  do_test()
+```
+
+For **step (iv)**, we repeat the step (ii) and (iii) 1000 times, giving us the following (showing only the first 20 rows):
+
+```{r, echo=FALSE, warning=FALSE}
+# rdply is a function that repeats some r code (the second argument)
+# .n-times (the first argument), and then stores the results in a data
+# frame, with one row for each of the .n outputs that result from run-
+# ning each of the .n repetitions of the r code.
+d.type1 = 
+  plyr::rdply(
+    # How many simulations/samples do we want to generate and analyze?
+    .n = n.samples,
+    # What we want to be repeated:
+    function(i) {
+      dd <- try(
+        make_single_subject_data(n.trial, d.pars)  %>%
+          do_test(), 
+        silent = TRUE)
+      # t.test sometimes fail. I'm catching those cases
+      # and setting the p.values to NA
+      if (any(class(dd) == "try-error"))
+        dd = data.frame(
+          RT.p.value = NA,
+          Accuracy.p.value = NA
+        )
+      return(dd)
+    })
+
+# Show the first 20 rows of the resulting data frame with all the 
+# simulation results
+d.type1 %>% 
+  head(20)
+```
+
+Finally, for **step (v)**, we calculate the proportion of the 1000 samples for which the effects of conditions on RTs or accuracy were significant, which corresponds to the estimated Type I error rate of the $t$-tests:
+
+```{r, echo=FALSE}
+# define pipe (since we'll be reusing it)
+get_TypeI = . %>%
+  dplyr::summarise_at(
+    vars(ends_with("p.value")), 
+    function(x) round(mean(x < .05, na.rm = T), 3)) %>%
+  rename_all(.funs = ~ gsub("p\\.value", "Type_I", .x))
+
+d.type1 %>%
+  get_TypeI()
+```
+
+These Type I error rates look OKish for the RT analysis, but clearly conservative for the analysis of accuracy. 
+
+As mentioned in the footnote above, any Type I error calculation is only as good as its assumptions. In this particular case, we've made some problematic assumptions. For example, we assumed that RTs are drawn from a normal distribution, but that would predict that there can be negative RTs (the tails of a normal distribution are infinitely long). Such problematic assumptions do not *necessarily* lead to wrong estimates of the Type I error rate, but they *can*. 
+
+## The consequences of making problematic assumptions about the ground truth (step (i))
+
+In this particular example, we actually *know* the ground truth. That's because the data analyzed here are actually not data from a psycholinguistic experiment. Instead, we generated them silently at the top of this document, using a lognormal (rather than normal) distribution for the RTs and a Bernoulli distribution for the accuracies (plus normally distributed individual differences across the subjects). This means that we can compare the Type I error rate of the $t$-test obtained above to the Type I error rate of the same $t$-test if the data is generated following the ground truth. 
+
+The following repeats steps (ii) - (v) under the correct ground truth. For RTs, we find that we get a pretty similar Type I error rate as above, despite the fact that our assumptions have changed. For the analysis of accuracy, however, we see a substantially lower Type I error rate than the target of .05. That is, the $t$-test is actually rather conservative for this particular data set.
+
+```{r, echo=FALSE}
+# A function to generate ground truth data
+make_from_original_data = function(n.trial, which.subject) {
+  crossing(
+    subject = which.subject,
+    condition = c("low frequency","high frequency"),
+    trial = 1:n.trial
+  ) %>%
+    mutate(
+      muLogOddsCorrect = mean(d.orig[d.orig$subject == which.subject, 
+                                     "muLogOddsCorrect"][[1]]),
+      muLogRT = mean(d.orig[d.orig$subject == which.subject, 
+                            "muLogRT"][[1]])
+    ) %>%
+    group_by(subject) %>%
+    mutate(
+      muLogOddsCorrect.bySubject = mean(d.orig[d.orig$subject == which.subject, 
+                                               "muLogOddsCorrect.bySubject"][[1]]),
+      muLogRT.bySubject = mean(d.orig[d.orig$subject == which.subject, 
+                                      "muLogRT.bySubject"][[1]])
+    ) %>%
+    rowwise() %>%
+    mutate(
+      correct = rbinom(1, 1, 
+                       plogis(muLogOddsCorrect + muLogOddsCorrect.bySubject)),
+      RT = round(100 + 
+                   exp(rnorm(1, muLogRT + muLogRT.bySubject - .15 * correct, .1)), 3)
+    ) %>%
+    as_tibble() %>%
+    select(-starts_with("mu")) %>%
+    mutate_at(c("condition", "subject"), factor) %>%
+    arrange(subject, trial, condition)
+}
+
+d.type1.true = 
+  plyr::rdply(
+    .n = n.samples,
+    function(i) {
+      dd = try(
+        make_from_original_data(n.trial, which.subject = which.subj) %>%
+          do_test(), silent = TRUE)
+      if (any(class(dd) == "try-error"))
+        dd = data.frame(
+          RT.p.value = NA,
+          Accuracy.p.value = NA
+        )
+      return(dd)
+    })
+
+d.type1.true %>%
+  get_TypeI()
+```
+
+These results suggest that we should not use a $t$-test for the analysis of our accuracy results. Indeed, this problem of $t$-tests and ANOVA for the analysis of categorical outcomes is well-known. But even if we didn't know anything about it, the sampling-based approach has provided us with a tool to notice that something is off.
+  
