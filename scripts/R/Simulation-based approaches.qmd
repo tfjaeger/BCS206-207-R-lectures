@@ -2,7 +2,7 @@
 title: "BCS 519: Simulation-based approaches"
 author: Florian Jaeger
 email: fjaeger@ur.rochester.edu
-format: 
+format:
   revealjs:
     transition: slide
     background-transition: fade
@@ -107,7 +107,7 @@ generate_data_under_null() %>%
 
 ```{r, echo=TRUE}
 null_distribution <- replicate(
-  n = 20000, 
+  n = 20000,
   expr = {generate_data_under_null() %>% summarize_data()})
 head(null_distribution, 20)
 ```
@@ -134,7 +134,7 @@ sum(null_distribution >= 26) / sum(!is.na(null_distribution))
 ## An example problem
 
 ```{r, include = F}
-# We will generate some fake data to work with, but you could plug your own real data in here 
+# We will generate some fake data to work with, but you could plug your own real data in here
 # (and change the code below so that it matches the names of the variables in your data)
 set.seed(123456)
 
@@ -154,7 +154,7 @@ n.trial = 24
 
 ```{r}
 # Let's make some (fake) data
-d.orig <- 
+d.orig <-
   crossing(
     subject = 1:n.subject,
     condition = c("low frequency","high frequency"),
@@ -207,12 +207,12 @@ which.subj = 3
 #| code-fold: true
 #| code-summary: "expand for full code"
 #| fig-align: "center"
-d.pars <- 
-  d %>% 
+d.pars <-
+  d %>%
   filter(subject == which.subj) %>%
   summarise(
     across(
-      c(RT, correct), 
+      c(RT, correct),
       list("mean" = mean, "sd" = sd),
       .names = "{.fn}_{.col}"))
 
@@ -231,7 +231,7 @@ d.pars
 make_single_subject_data <- function(n.trial, d.pars) {
   # This generates a data frame with one row for each unique
   # combination of the variable values handed to it. E.g., if
-  # there are 24 trials (n.trial = 24), we will end up with 
+  # there are 24 trials (n.trial = 24), we will end up with
   # 48 rows (= 1 subject * 2 conditions * 48 trials)
   crossing(
     subject = 1,
@@ -273,8 +273,8 @@ temp %>%
     across(
       c(RT, correct),
       list(
-        "mean" = ~ mean(.x, na.rm = T), 
-        "SE" = ~ sd(.x, na.rm = T) / sqrt(sum(!is.na(.x)) - 1)), 
+        "mean" = ~ mean(.x, na.rm = T),
+        "SE" = ~ sd(.x, na.rm = T) / sqrt(sum(!is.na(.x)) - 1)),
       .names = "{.fn}_{.col}"))
 ```
 
@@ -293,7 +293,7 @@ temp %>%
 #| fig-align: "center"
 do_test <- function(data) {
   d = tibble(.rows = 1)
-  
+
   if ("RT" %in% names(data)) {
     t1 = t.test(RT ~ condition, data = data, var.equal = T)
     d %<>%
@@ -326,10 +326,10 @@ temp %>%
 #| code-fold: true
 #| code-summary: "expand for full code"
 #| fig-align: "center"
-# rdply does more less the same as replicate() but conveniently binds 
-# the results into a tibble, with one row for each of the .n outputs 
+# rdply does more less the same as replicate() but conveniently binds
+# the results into a tibble, with one row for each of the .n outputs
 # that result from running each of the .n repetitions of the r code.
-d.type1 = 
+d.type1 =
   plyr::rdply(
     # How many simulations/samples do we want to generate and analyze?
     .n = n.samples,
@@ -337,7 +337,7 @@ d.type1 =
     function(i) {
       dd <- try(
         make_single_subject_data(n.trial, d.pars)  %>%
-          do_test(), 
+          do_test(),
         silent = TRUE)
       # t.test sometimes fail. I'm catching those cases
       # and setting both p.values to NA
@@ -357,7 +357,7 @@ d.type1 =
 -   Here are the first 20 rows of p-values resulting from that simulation:
 
 ```{r}
-d.type1 %>% 
+d.type1 %>%
   head(20)
 ```
 
@@ -373,17 +373,17 @@ t-test sometimes does not converge. Hence the NAs.
 #| code-fold: true
 #| code-summary: "expand for full code"
 #| fig-align: "center"
-get_TypeI <- 
+get_TypeI <-
   . %>%
   summarise(
     across(
-      ends_with("p.value"), 
+      ends_with("p.value"),
       list(
         "convergence" = ~ sum(!is.na(.x)) / length(.x),
         "Type_I_error" = ~ round(mean(.x < .05, na.rm = T), 3)),
     .names = "{.fn}_{.col}")) %>%
   rename_all(.funs = ~ gsub("\\.p\\.value", "", .x)) %>%
-  # Since we're setting analyses to NA when either of the RT 
+  # Since we're setting analyses to NA when either of the RT
   # or accuracy analysis failed, we only need one convergence rate
   select(-convergence_Accuracy) %>%
   rename(convergence = convergence_RT)
@@ -403,7 +403,7 @@ d.type1 %>%
 -   Calculate proportion of the 1000 samples for which conditions had significant effect:
 -   Type I error rates look OKish for RTs, but clearly conservative for accuracy.
 
--   **Type I error calculation only as good as its assumptions.** Here, we've made some problematic assumptions. 
+-   **Type I error calculation only as good as its assumptions.** Here, we've made some problematic assumptions.
 
 ::: notes
 For example, we assumed that RTs are drawn from a normal distribution, but that would predict that there can be negative RTs (the tails of a normal distribution are infinitely long).
@@ -413,25 +413,25 @@ For example, we assumed that RTs are drawn from a normal distribution, but that 
 
 - Problematic assumptions do not *necessarily* lead to wrong estimates of the Type I error rate, but they *can*.
 
-- Here, we actually *know* the ground truth. That's because the data analyzed here are actually not data from a psycholinguistic experiment. 
+- Here, we actually *know* the ground truth. That's because the data analyzed here are actually not data from a psycholinguistic experiment.
 
 - Instead, they are generated at the top of this document, using:
 
   + log-normal (rather than normal) distribution for the RTs
   + Bernoulli distribution for accuracies
-  
-. . .  
-  
+
+. . .
+
 - We can compare the Type I error rate of the $t$-test obtained above to the Type I error rate of the same $t$-test if the data is generated following the ground truth (see [Git repo](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2021-2022/scripts/R/6-Type-I-error-and-power-analyses.Rmd)).
 
-## What if we don't know the ground truth? 
+## What if we don't know the ground truth?
 
-- IRL, we rarely know the ground truth. How then, can we avoid problematic assumptions? 
+- IRL, we rarely know the ground truth. How then, can we avoid problematic assumptions?
 - No magic bullet, but **non-parametric bootstrap** avoids specific parametric assumptions.
 
 . . .
 
-- Specifically, we can substitute steps 1 and 2 by sampling without replacement data points from subject `r which.subj`: 
+- Specifically, we can substitute steps 1 and 2 by sampling without replacement data points from subject `r which.subj`:
 
 ```{r, echo=TRUE}
 #| code-fold: true
@@ -448,12 +448,12 @@ bootstrap_single_subject_data = function(n.trial, d) {
 }
 ```
 
-## What if we don't know the ground truth? 
+## What if we don't know the ground truth?
 
 - Applying the same steps 3 and 4 as above, we find:
 
 ```{r}
-d.type1.boot <- 
+d.type1.boot <-
   plyr::rdply(
     .n = n.samples,
     function(i) {
@@ -465,7 +465,7 @@ d.type1.boot <-
           Accuracy.p.value = NA
         )
       return(dd)
-    }) 
+    })
 
 d.type1.boot %>%
   get_TypeI()
