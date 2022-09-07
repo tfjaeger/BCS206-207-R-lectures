@@ -1,7 +1,7 @@
 ---
-title: 'BCS 207: More on data visualization'
-author: "Florian"
-date: "Spring 2021"
+title: 'More on data visualization'
+author: "T. Florian Jaeger"
+date: "Summer 2023"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -36,6 +36,9 @@ library(grid)
 
 theme_set(theme_bw())
 ```
+
+# This document
+This document is part of a series of lectures that introduce students to basic data wrangling, plotting, and general approaches to data analysis. Please see the [overview lecture](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2024-PhD-skillz-workshop/1-Overview.pdf). This and all other lectures are created in R markdown. R markdown combines text with R code, allowing us to see the code and its output, embedded within the text describing the code. If you have the original R markdown file (file extension .Rmd), you can 'knit' the document into an HMTL, PDF, or Word file. 
 
 # Overview
 This tutorial introduces you to additional aspects of plotting in R, such as the use of themes to fine-tune your plots.

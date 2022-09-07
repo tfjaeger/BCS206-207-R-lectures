@@ -1,7 +1,7 @@
 ---
 title: 'Confidence intervals'
-author: "Florian Jaeger"
-date: "Fall 2020"
+author: "T. Florian Jaeger"
+date: "Summer 2023"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -32,6 +32,8 @@ library("boot")       # for automatic bootstrap
 theme_set(theme_bw())
 ```
 
+# This document
+This document is part of a series of lectures that introduce students to basic data wrangling, plotting, and general approaches to data analysis. Please see the [overview lecture](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2024-PhD-skillz-workshop/1-Overview.pdf). This and all other lectures are created in R markdown. R markdown combines text with R code, allowing us to see the code and its output, embedded within the text describing the code. If you have the original R markdown file (file extension .Rmd), you can 'knit' the document into an HMTL, PDF, or Word file. 
 
 # Goals of this document
 This document is intended to introduce the basics of confidence intervals. 
@@ -45,7 +47,7 @@ You might prefer to instead (or also) have a manuscript that covers this topic i
 ## Important concepts and terminology
 In the brain and cognitive sciences, the goal of conducting experiments is to advance our understanding of the brain/mind. We aim to test the **predictions** of **theories** or more specific **hypotheses**. These theories typically constitute propositions about causes, and the statistical tests we conduct typically assess the predicted correlations that would result from the hypothesized causal relations. These correlations are assessed on some finite amount of data from *samples* we've obtained from the underyling *population* of interest.
 
-To illustrate this with an example, remember the experiment on visual crowding introduced in a [previous lecture](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2021-2022/scripts/R/3a-Data-wrangling-and-visualization.pdf). To recap that experiment briefly:
+To illustrate this with an example, recall the experiment on visual crowding introduced in a [previous lecture](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2024-PhD-skillz-workshop/scripts/R/3a-Data-wrangling-and-visualization.pdf). To recap that experiment briefly:
 
 > On each trial, subjects had to fixate on a fixation cross. The fixation cross was then replaced by a small small number, and subjects had to quickly answer whether they saw the number "3" or "8" (making this a two-alternative forced choice, 2AFC). Half of the trials displayed "3", half displayed "8". Within subject, the experiment manipulated two variables, the size of the number (1, 2, or 4) and whether the number was surrounded by four other numbers above, below, left, and right of it (hard) or not (easy). The presence of other numbers presented close to the target number is known to make recogntion of the target number harder---an effect known as "visual crowding". For each trial, the software recorded whether the subject's response was correct (1 = correct; 0 = incorrect) and the reaction time for the response (RT).
 
@@ -186,7 +188,7 @@ When the distribution of a variable is known---or if we are willing to make assu
 
 $mean_y \pm 1.96 * \frac{SD_y}{\sqrt{n}}$
 
-where $SD_y$ is the *sample's* standard deviation of y---i.e., the standard deviation of $y$ in our observed sample. Why is it $\pm 1.96$? Because 95% of the density of a normal distribution lie between its mean $\pm 1.959964...$ its standard deviation---i.e., between its .025 and .975 quantile. E.g. for our example from above, a normal distribution with mean 10 and standard deviation 2:
+where $SD_y$ is the *sample's* standard deviation of y---i.e., the standard deviation of $y$ in our observed sample. Why is it $\pm 1.96$? Because 95% of the density of a normal distribution falls between its mean $\pm 1.959964...$ its standard deviation---i.e., between its 2.5th and 97.5th quantile. E.g. for our example from above, a normal distribution with mean 10 and standard deviation 2:
 
 ```{r, warning=FALSE, fig.height=3, fig.width=4}
 mean = 10
@@ -219,7 +221,7 @@ Notice two important properties of the CIs defined above, both due to the term $
  * the more variable the observation in the sample ($SD_y$), the larger/wider the CIs
  * the more sample data we have, the smaller/more narrow the CIs
  
-To make this more concrete, consider the experiment from last week. Let's calculate the 95% CIs for the six conditions defined by crossing the three number sizes and two crowding conditions. We'll do so for subject 1.
+To make this more concrete, consider the experiment on visual crowding described above. Let's calculate the 95% CIs for the six conditions defined by crossing the three number sizes and two crowding conditions. We'll do so for subject 1.
 
 ```{r, echo=T, message=F}
 d = read_csv("../../data/example_data.csv")
@@ -277,9 +279,9 @@ d %>%
 
 Note how the 95% CIs include values outside of the possible range for proportions (larger than 1 in this case). This is a clear indication that we cannot safely assume normality for this type of data. There are generally two ways around this issue: either we obtain CIs under assumptions that reflect the actual generative process underlying the data, or we use non-parametric methods to obtain CIs that do not assume a specific parametric form of the distribution. The second approach has the advantage that it works for any type of distribution, which is great since the true distribution of the outcome is typically not known!
 
-## Non-parametric confidence intervals
+## Non-parametric confidence intervals from a sample-based approach
 
-One non-parametric method to calculate CIs is the **bootstrap**. There are many different implementations of it, and the details can become quite complicated depending on the type of data you are analyzing. At the core though, the bootstrap is based on a rather intuitive idea. Rather than to make parametric assumptions about the distribution of the data and the resulting expected distribution of the sample means (across samples), we can use the sample data we have to estimate the distribution. Specifically, we can randomly sample with replacement a new sample *from the sample data we have*. For example, for subject 1 from the same experiment as above we resample 720 new trials (balanced in the same way as before) from the 720 trials we have from that subject:
+One non-parametric method to calculate CIs is the **bootstrap**. The bootstrap (Efron & Tibshirani, 1994) is a highly powerful, general-purpose sampling-based approach. It can be used for many purposes, and here we use it to construct confidence intervals. There are many different implementations of the bootstrap, and some of the details can become quite complicated depending on the type of data you are analyzing. At the core though, the bootstrap is based on a rather intuitive idea. Rather than to make parametric assumptions about the distribution of the data and the resulting expected distribution of the sample means (across samples), we can use the sample data we have to estimate the distribution. Specifically, we can randomly sample with replacement a new sample *from the sample data we have*. For example, for subject 1 from the same experiment as above we resample 720 new trials (balanced in the same way as before) from the 720 trials we have from that subject:
 
 ```{r}
 set.seed(9876)
@@ -295,7 +297,7 @@ d.sample = d %>%
 d.sample
 ```
 
-Note that these are not the same trials as before. We can see that by plotting a histogram of the original trial ID in the newly resampled data. We can see that some trials were sampled multiple times, and others were sampled never:
+Note that these are not the same trials as before. We can see that by plotting a histogram of the original trial ID in the newly resampled data. We can see that some trial IDs (x-axis) were sampled multiple times (see the counts on the y-axis), and others were never sampled:
 
 ```{r}
 ggplot(
@@ -321,7 +323,8 @@ d.sample_means = d %>%
 
 print(d.sample_means)
 ```
-Now we simply ask what the 2.5th to 97.5th quantiles of each of these six distribution of means are. Basically, we determine the range around the mean in which 95% of the resampled means fall. Notice that the CIs based on these quantiles do not (and can never) fall outside of the possible range of the data. Notice also that the CIs are asymmetric around the mean, as we would expect because precisely because they should not include values outside of the [0,1] range:
+
+Now we simply ask what the 2.5th to 97.5th quantiles of each of these six distribution of means are. Basically, we determine the range symmetric around the mean in which 95% of the resampled means fall. Notice that the CIs based on these quantiles do not (and can never) fall outside of the possible range of the data. Notice also that the CIs are asymmetric around the mean, as we would expect because precisely because they should not include values outside of the [0,1] range:
 
 ```{r, echo=T}
 d.sample_summary = d.sample_means %>%
@@ -365,11 +368,11 @@ d %>%
   coord_cartesian(ylim = c(0.75,1))
 ```
 
-Bootstrap is a powerful (and ultimately simple) option for obtained confidence intervals. One important limitation to keep in mind about the bootstrap though is that it is utterly dependent on the representativeness of the sample data. One direct consequence of that is that bootstrapped CIs become more robust the more sample data we have. If you're interested in learning more about bootstrap and sampling-based approaches to statistics, check out the lecture on sampling-based approaches in the same [Github repo that this lecture come from](https://github.com/tfjaeger/BCS206-207-R-lectures/tree/2021-2022/scripts/R).
+Bootstrap is a powerful (and ultimately simple) method to obtain confidence intervals. One important limitation to keep in mind about the bootstrap though is that it is utterly dependent on the representativeness of the sample data. One direct consequence of that is that bootstrapped CIs become more robust the more sample data we have. If you're interested in learning more about bootstrap and sampling-based approaches to statistics, check out the [lecture on sampling-based approaches  ](https://github.com/tfjaeger/BCS206-207-R-lectures/tree/2024-PhD-skillz-workshop/scripts/R/5b-Sampling-based-approaches Extended.pdf).
 
 # Confidence intervals for grouped (repeated measures) data
 
-So far we have obtained CIs only for data from a single subject. When we have repeated measures from multiple subjects, we can still use the approaches discussed here. We should, however, apply them to the *by-subject means* rather than the raw data to obtain visualizations that approximate appropriately conservative (i.e., wide) CIs. 
+So far we have obtained CIs only for data from a single subject. When we have repeated measures from multiple subjects, we can still use the approaches discussed here. We should, however, apply them to the *by-subject means* rather than the raw data to obtain visualizations that approximate appropriately conservative (i.e., wide) CIs.^[Note that the approach described here is not ideal, as it has no notion of how much data there is for each subject (information loss is never ideal). There are hierarchical extensions of bootstrap that can take this information into account. Here we focus on the simpler approach of calculating CIs over by-subject averages. For what it is worth, this is also the approach that I use for the basic plots in basically every single paper I have been involved in. Generally, it is a good idea to identify the largest source of variability among the grouping factors in your data (e.g., for language research: subjects, items, language, genus, language famility, etc.), and to aggregate the data down to one observation per condition per level of the grouping variable with the largest variability. In psycholinguistic experiments, participants are *typically* the grouping variable with the largest variability (i.e., participants differ more from each other than items. However, this is not necessarily true for, e.g., corpus studies that explore a larger range of linguistic material.] 
 
 Consider, for example, that we would like to plot the CIs for the same six conditions analyzed above but would like to do so for all subjects together rather than just subject 1. In that case, we should first summarize the data down to one mean for each of the six conditions for each subject, and then obtain CIs for the distribution of these by-subject means. Notice how the CIs are now considerably larger. That is because they now reflect our uncertainty about not just subject 1 but about the mean across *all* subjects (and we are more uncertain at this level of the data because subjects vary substantially from each other in this example---as is also typically the case in many real experiments).
 
@@ -400,7 +403,32 @@ Plots of condition means like the ones we have seen above are very common in sci
 
 The reason for that is that our statistical tests typically assess hypotheses about *differences between means*, rather than the means themselves. For example, if want to know whether RTs in the the easy (uncrowded) condition were significantly faster than RTs in the hard (crowded) condition we are testing whether we can reject the null hypothesis that the *difference* in RTs between these conditions is 0. It is therefore the CI of the mean difference between the conditions that tells whether there is an effect. For the conventional sigificance criterion of .05, we would reject the null hypothesis if the 95% CI around the mean difference in RTs between the easy and hard condition does not contain 0.
 
-So unless we plot difference between RTs, rather than the mean RTs of all conditions, the CIs in the plot do not directly map onto the p-values of our statistical tests. That said, especially when we're not dealing with paired data (i.e., if the data aren't grouped) significant differences in the means will cause the CIs around a means to not include the other mean.
+So unless we plot difference between RTs, rather than the mean RTs of all conditions, the CIs in the plot do not directly map onto the p-values of our statistical tests. That said, especially when we're not dealing with paired data (i.e., if the data aren't grouped) significant differences in the means will cause the CIs around a means to not include the other mean. In any case, the type of plot you've seen above is arguably a great go-to (default) plot for your data, possibly enriched by the raw data (by-subject means) and shape information (to remain informative when it is printed grayscale):
+
+```{r}
+d %>%
+  # the next two lines first create by-subject means for each of the six conditions
+  group_by(subject, condition, size) %>%
+  summarize(correct = mean(correct)) %>%
+  # the rest of this code is the same as above
+  ggplot(aes(x = size, 
+             y = correct,
+             shape = condition,
+             color = condition)) +
+  geom_point(
+    position = position_dodge(.1),
+    alpha = .5) +
+  stat_summary(
+    fun.data = mean_cl_boot, 
+    geom = "pointrange", 
+    position = position_dodge(.1)) +
+  stat_summary(
+    fun.data = mean_cl_boot, 
+    geom = "line", 
+    position = position_dodge(.1)) +
+  scale_y_continuous("Proportion correct answers") +
+  coord_cartesian(ylim = c(0,1))
+```
 
 # Session info
 ```{r session_info, echo=FALSE, results='markup'}

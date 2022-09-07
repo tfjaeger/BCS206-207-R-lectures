@@ -1,7 +1,7 @@
 ---
 title: 'Data Wrangling and Visualization 101 in R'
-author: "Florian Jaeger"
-date: "Fall 2020"
+author: "T. Florian Jaeger"
+date: "Summer 2023"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -35,15 +35,15 @@ library("plotly")     # for interactive plots
 theme_set(theme_bw())
 ```
 
+# This document
+This document is part of a series of lectures that introduce students to basic data wrangling, plotting, and general approaches to data analysis. Please see the [overview lecture](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2024-PhD-skillz-workshop/1-Overview.pdf). This and all other lectures are created in R markdown. R markdown combines text with R code, allowing us to see the code and its output, embedded within the text describing the code. If you have the original R markdown file (file extension .Rmd), you can 'knit' the document into an HMTL, PDF, or Word file. 
 
 # Overview
-
 This document provides an introduction to data wrangling and visualization in R. Following this class, you will be asked to apply the knowledge gain from this tutorial to *your own data*. **By this Wednesday, post at least one plot about your data on slack using the skills learned in this tutorial.** You are encouraged to ask questions (and help others) on slack. 
 
 The document also contains sections marked as exercises. **Please complete these exercises by Friday** and submit them on slack. As with everything else, you're encouraged to ask questions about these problem sets and provide help on slack.
 
 # Data wrangling
-
 The *R* libraries *dplyr* provide us with efficient ways to transform ('wrangle') our data tables. The library *magrittr* let's us concatenate these operations in transparent and easy to read code. Like many of the packages we use in this tutorial, they are part of the *tidyverse*---an awesome and powerful collection of R packages for the data sciences (\url{https://www.tidyverse.org/}).
 
 There are many video and interactive tutorials for R, RStudio, and the tidyverse online. I *highly* recommend that you invest a handful of ours to get your inner data scientist started. Your future self will thank you. R is increasingly used both in academia and in the data sciences, and that includes the libraries we use for this tutorial (which are also available in similar form for Python). I would recommend going through at least the first four Sections of [RStudio's R Primers](https://rstudio.cloud/learn/primers): The basics, working with data, visualizing data, and tidying data.

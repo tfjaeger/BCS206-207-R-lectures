@@ -1,7 +1,7 @@
 ---
-title: 'Data Wrangling and Visualization 101 in R - Class 2'
-author: "Florian Jaeger"
-date: "Fall 2020"
+title: 'Data Wrangling and Visualization 101 in R - Going through example data sets'
+author: "T. Florian Jaeger"
+date: "Summer 2023"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -35,7 +35,8 @@ library("plotly")     # for interactive plots
 theme_set(theme_bw())
 ```
 
-
+# This document
+This document is part of a series of lectures that introduce students to basic data wrangling, plotting, and general approaches to data analysis. Please see the [overview lecture](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2024-PhD-skillz-workshop/1-Overview.pdf). This and all other lectures are created in R markdown. R markdown combines text with R code, allowing us to see the code and its output, embedded within the text describing the code. If you have the original R markdown file (file extension .Rmd), you can 'knit' the document into an HMTL, PDF, or Word file. 
 
 # Applying these methods to your own data
 
@@ -194,7 +195,6 @@ d.speech.exposure %>%
 
 
 #### Plotting all subjects' performance during test
-
 Here's the basic plot for the test data. Note that we first summarized the data down to the subject level---i.e., one data point per subject, label condition, and subject. We then get the 95% bootstrapped CIs over those *by-subject means*. This is avoiding overly confident (small) CIs that would result from us failing to acknowledge that repeated measures taken from the same subject are *not* independent of each other. This is different from the motion group, since they are plotting their data separately by subject.
 
 ```{r}
@@ -225,13 +225,8 @@ d.speech.test %>%
 
 **How would you change the y-axis label? How would you make sure that the y-axis actually goes from 0 to 0?** Hint: both things can be changed through a scale component. **And, how would you add information about the pen-in-the-hand vs. pen-in-the-mouth condition to this plot?** Hint: shape and linetype provide you with additional visual means, as does faceting.
 
-
-
-#### Relating subjects' performance during exposure and test
-
+#### Relating subjects' performance during exposure and test\
 **If you figured out the above, go ahead and try to plot the boundary shift during test against the proportion of shifted words that were rated as words.** This will require *combining* the exposure and test data. You will first have to aggregate (summarise) each of the two data down to the by-subject level, and then you can *join* the two data frames (look up ?left_join).
-
-
 
 
 

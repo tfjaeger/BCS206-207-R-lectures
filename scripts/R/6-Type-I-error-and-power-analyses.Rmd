@@ -1,7 +1,7 @@
 ---
 title: "Sampling-based Type I and power analyses"
 author: "T. Florian Jaeger"
-date: "3/15/2021"
+date: "Summer 2023"
 output: 
   pdf_document: default
   bookdown::gitbook:
@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r constants, include = F}
-n.samples = 2000
+n.samples <- 2000
 ```
 
 ```{r libraries, include = F}
@@ -29,22 +29,36 @@ library("boot")       # for automatic bootstrap
 ```
 
 # This document
-This document is created in R markdown. R markdown combines text with R code, allowing us to see the code and its output, embedded within the text describing the code. If you have the original R markdown file (file extension .Rmd), you can 'knit' the document into an HMTL, PDF, or Word file. Just be aware that the code executes a good number of sampling-based simulations, and these simulations take some time to complete. The parameter that determines how many samples are used in each of the sampling simulations is `n.samples`. You can change the value of `n.samples` to a small number (e.g., `10`) to speed up compilation.
+This document is part of a series of lectures that introduce students to basic data wrangling, plotting, and general approaches to data analysis. Please see the [overview lecture](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2024-PhD-skillz-workshop/1-Overview.pdf). This and all other lectures are created in R markdown. R markdown combines text with R code, allowing us to see the code and its output, embedded within the text describing the code. If you have the original R markdown file (file extension .Rmd), you can 'knit' the document into an HMTL, PDF, or Word file.  
+
+Please be aware that the code executes a good number of sampling-based simulations, and these simulations take some time to complete. The parameter that determines how many samples are used in each of the sampling simulations is `n.samples`. You can change the value of `n.samples` to a small number (e.g., `10`) to speed up compilation.
+
+# Sampling-based Type I error and power analyses 
+In the previous [lecture on sampling-based approaches](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2024-PhD-skillz-workshop/5-Sampling-based-approaches-lecture.Rmd), we have introduced sampling-based approaches as an alternative to analytical approaches. We have learned how they can be used to understand statistical concepts (like the standard error of the mean) r to calculate, e.g., confidence intervals while avoiding parametric assumptions.
+
+Another powerful application of sampling-based approaches is to obtain estimates of the **Type I error** rate (how often the analysis returns significance when in reality there is no effect in the underlying population) or **Type II error** rate of an analysis approach (how often we fail to find an effect that is actually present in the underlying population). These error rates depend on both:
+
+ 1. the *data*, including not just the amounnt and grouping structure of the data, but also assumptions made about the distributions in the data (this point is often overlooked)
+ 2. the *analysis approach*, including assumptions it makes about the distribution of the outcome (e.g., Normally vs. Bernoulli distributed), the relevant predictors, and the relation between predictors and the outcome (e.g,. linearity). 
+ 
+That is, while one analysis approach might yield the targeted Type I error rate (e.g., a Type I error rate of .05 for a significance criterion of $\alpha = .05$), another approach might fail to achieve this error rate on the same data. Conversely, approach A might work better for data set 1, whereas approach B works better for data set 2 (where "better" means achieving an error rate closer to the targeted error rate). 
+
+For Type I errors, we want to avoid in particular *anti-conservativity*---error rates above .05---but also *conservatity*---error rates lower than .05. For **power** (which is simply 1 - Type II error), we want to have as much statistical power as possible. Whereas conventions for targeted Type I error rates tend to be pretty clear, conventions for what constitutes sufficient power tend to be less clear. 
+
+In this lecture, we go through how one can use the sampling-based approach to assess power and Type I error rates. These analyses are based conducted before collecting data (e.g., so that one can still change how much data to collect), but can also be conducted after data collection prior to the analysis (e.g., to guide which analysis approach one should choose), or even after analyses are already conducted (e.g., to assess how much we can trust our results).
 
 # An example problem
-
-In this document, we are using the same example data set and problem already introduced in the lecture on sampling-based approaches to confidence intervals.
 
 ```{r, include = F}
 # We will generate some fake data to work with, but you could plug your own real data in here 
 # (and change the code below so that it matches the names of the variables in your data)
 set.seed(123456)
 
-n.subject = 48
-n.trial = 24
+n.subject <- 48
+n.trial <- 24
 
 # Let's make some (fake) data
-d.orig = 
+d.orig <- 
   crossing(
     subject = 1:n.subject,
     condition = c("low frequency","high frequency"),
@@ -74,21 +88,13 @@ d.orig =
   mutate_at(c("condition", "subject"), factor) %>%
   arrange(subject, trial, condition)
 
-d = d.orig %>%
+d <- d.orig %>%
     select(-starts_with("mu"))
 ```
 
-Let's say we have an experiment with `r n.subject` subjects, in which each subject saw `r n.trial` trials for each of two conditions (for a total of `r n.trial * 2` trials per subject). On each trial, subjects saw a picture of an object and had to decide as quickly and accurately whether the picture depicts something animate (a living thing) or not. The two conditions manipulate whether the object is something that we see frequently in our life ("high frequency") or not ("low frequency"). We collected both reaction times of subjects' responses (`RT`), and whether those responses were accurate (`correct`). We hypothesize that more frequent objects will be responded to more quickly and accurately. 
+We will use an example data set that is also used in some of the other lectures. We assume an experiment with `r n.subject` subjects, in which each subject saw `r n.trial` trials for each of two conditions (for a total of `r n.trial * 2` trials per subject). On each trial, subjects saw a picture of an object and had to decide as quickly and accurately whether the picture depicts something animate (a living thing) or not. The two conditions manipulate whether the object is something that we see frequently in our life ("high frequency") or not ("low frequency"). We collected both reaction times of subjects' responses (`RT`), and whether those responses were accurate (`correct`). We hypothesize that more frequent objects will be responded to more quickly and accurately. 
 
-
-# Sampling-based Type I error and power analyses 
-
-Another powerful application of sampling-based approaches is to obtain estimates of the **Type I error** rate (how often the analysis returns significance when in reality there is no effect in the underlying population) or **Type II error** rate of an analysis approach (how often we fail to find an effect that is actually present in the underlying population). Before we proceed, it is important to note that these error rates depend on both the *data* and the *analysis approach*.^[Additionally, Type I and II error rates depend on the assumptions we make while estimating them---a fact that is often overlooked. For example, journals might require a certain minimum of statistical power for publication, but typically do not specify how this power is estimated. We'll return to this point below.] That is, while one approach might yield the targeted Type I error rate (e.g., a Type I error rate of .05 for a significance criterion of $\alpha = .05$), another approach might fail to achieve this error rate on the same data. Conversely, approach A might work better for data set 1, whereas approach B works better for data set 2 (where "better" means achieving an error rate closer to the targeted error rate). 
-
-For Type I errors, we want to avoid in particular *anti-conservativity*---error rates above .05---but also *conservatity*---error rates lower than .05. For **power** (which is simply 1 - Type II error), we want to have as much statistical power as possible. Whereas conventions for targeted Type I error rates tend to be pretty clear, conventions for what constitutes sufficient power tend to be less clear. 
-
-In this section, we go through how one can use the sampling-based approach to assess power and Type I error rates. These analyses are based conducted before collecting data (e.g., so that one can still change how much data to collect), but can also be conducted after data collection prior to the analysis (e.g., to guide which analysis approach one should choose), or even after analyses are already conducted (e.g., to assess how much we can trust our results).
-
+# The general structure of sampling-based approaches to Type I error and power analyses
 The basic idea of the sampling-based approach to Type I error or power analysis is that we 
 
   (i) determine our assumed 'ground truth', i.e., the assumptions we want to make about the effects in the underlying population that we are interested in.
@@ -103,7 +109,7 @@ The only difference between Type I error and power simulations is in step (i)---
 
 ```{r, include=FALSE}
 # Which subject is chosen for simulation?
-which.subj = 3
+which.subj <- 3
 ```
 
 Let's say we want to analyze both the RT and the accuracy data from our experiment with a $t$-test. Being conservative researchers, we are interested in estimating the Type I error rate of this approach. We don't want to be anti-conservative, as this would mean we might draw conclusions that are unlikely to hold, and describe result patterns that are unlikely to replicate. To illustrate this process, we again start with a scenario in which we have data from only one subject (this time, we'll go with Subject ```r which.subj```). We first get the mean and SD for both RTs and accuracy from our data. 
@@ -113,7 +119,7 @@ Let's say we want to analyze both the RT and the accuracy data from our experime
 If we apply a standard $t$-test to the original RT and accuracy data, we find a (highly) significant difference in RTs but not in accuracy:
 
 ```{r, echo=FALSE}
-d.subj = d %>% filter(subject == which.subj)
+d.subj <- d %>% filter(subject == which.subj)
 t.test(RT ~ condition, data = d.subj, var.equal = T, paired = F)
 t.test(correct ~ condition, data = d.subj, var.equal = T, paired = F)
 ```
@@ -121,13 +127,13 @@ t.test(correct ~ condition, data = d.subj, var.equal = T, paired = F)
 For **step (i)** of our Type I error calculation, we take the observed mean and standard deviation (SD) of the data in our sample, and then make a function that generates data with those parameters under, e.g., the assumption of normality. For this, we ignore condition, since we want to simulate a scenario in which the ground truth is that there is *no* difference between the two conditions (i.e., a null effect):
 
 ```{r, echo=FALSE}
-d.pars = d.subj %>% 
+d.pars <- d.subj %>% 
   summarise_at(vars(RT, correct), .funs = list("mean" = mean, "sd" = sd))
 
 d.pars
 ```
 
-For **step (ii)**, we write a function that can generate RT and accuracy data from these parameters. For the RTs we assume that they are drawn from a normal distribution with the mean and SD observed in our experiment for Subject ```r which.subj```. For accuracy, we assume that it is drawn from a Bernoulli distribution with the mean observed in our experiment for Subject ```r which.subj```.
+For **step (ii)**, we write a function that can generate (i.e., sample) RT and accuracy data from these parameters. For the RTs we assume that they are drawn from a normal distribution with the mean and SD observed in our experiment for Subject ```r which.subj```. For accuracy, we assume that it is drawn from a Bernoulli distribution with the mean observed in our experiment for Subject ```r which.subj```. Since we are conducting a Type I error simulation, we are *not* adding a difference to RTs and accuracies of the two conditions (or, equivalently, we are adding 0 as a difference).
 
 ```{r, echo = T}
 # A function to parametrically generate data from our thought
@@ -147,11 +153,11 @@ make_single_subject_data = function(n.trial, d.pars) {
     # and SD of the RT and accuracy distributions we want to sample
     # from.
     mutate(
-      correct = rbinom(nrow(.), 1, d.pars$correct_mean[1]),
-      RT = rnorm(nrow(.), d.pars$RT_mean[1], d.pars$RT_sd[1])
+      correct = rbinom(n = nrow(.), size = 1, prob = d.pars$correct_mean[1]),
+      RT = rnorm(n = nrow(.), mean = d.pars$RT_mean[1], sd = d.pars$RT_sd[1])
     ) %>%
     # Do some formatting and sort the data by subject, trial, and 
-    # condition. These lines of code are not necessary.
+    # condition. These lines of code are not strictly necessary.
     as_tibble() %>%
     mutate_at(c("condition", "subject"), factor) %>%
     arrange(subject, trial, condition)
@@ -176,12 +182,12 @@ do_test = function(data) {
   d = tibble(.rows = 1)
   
   if ("RT" %in% names(data)) {
-    t1 = t.test(RT ~ condition, data = data, var.equal = T)
+    t1 <- t.test(RT ~ condition, data = data, var.equal = T)
     d %<>%
       mutate(RT.p.value = t1$p.value)
   }
   if ("correct" %in% names(data)) {
-    t2 = t.test(correct ~ condition, data = data, var.equal = T)
+    t2 <- t.test(correct ~ condition, data = data, var.equal = T)
     d %<>%
       mutate(Accuracy.p.value = t2$p.value)
   }
@@ -192,20 +198,26 @@ do_test = function(data) {
 # Apply our test function to the actual data (the individual subject we 
 # selected above).
 do_test(d.subj)
+```
 
+Here's what happens if we chain steps (ii) and (iii) together to draw single new instance of the experiment and apply the $t$-tests:
+
+```{r}
 # One draw from the data generated under the assumption of a null effect
 # that is then analyzed in our do_test() function.
 make_single_subject_data(n.trial, d.pars) %>%
   do_test()
 ```
 
-For **step (iv)**, we repeat the step (ii) and (iii) 1000 times, giving us the following (showing only the first 20 rows):
+For **step (iv)**, we repeat the step (ii) and (iii) 1000 times, giving us the following (showing only the first 20 rows). Note that there are some `NA`s in the output. That's the case because the t-test sometimes doesn't converge:
 
 ```{r, echo=FALSE, warning=FALSE}
 # rdply is a function that repeats some r code (the second argument)
 # .n-times (the first argument), and then stores the results in a data
 # frame, with one row for each of the .n outputs that result from run-
-# ning each of the .n repetitions of the r code.
+# ning each of the .n repetitions of the r code. rdply() is this similar 
+# to the function replicate() but it conveniently also binds the output 
+# together into a data.frame.
 d.type1 = 
   plyr::rdply(
     # How many simulations/samples do we want to generate and analyze?
@@ -232,27 +244,32 @@ d.type1 %>%
   head(20)
 ```
 
-Finally, for **step (v)**, we calculate the proportion of the 1000 samples for which the effects of conditions on RTs or accuracy were significant, which corresponds to the estimated Type I error rate of the $t$-tests:
+Finally, for **step (v)**, we calculate the proportion of the 1000 samples for which the effects of conditions on RTs or accuracy were significant, which corresponds to the estimated Type I error rate of the $t$-tests (since we simulated a ground truth that did *not* add an effect):
 
 ```{r, echo=FALSE}
 # define pipe (since we'll be reusing it)
 get_TypeI = . %>%
   dplyr::summarise_at(
     vars(ends_with("p.value")), 
-    function(x) round(mean(x < .05, na.rm = T), 3)) %>%
+    # Here we count t-tests that yield an NA results as *not* a Type I error.
+    # This assumes an experimenter who got such a result (hopefully!) would not
+    # conclude that they found a significant effect.
+    function(x) {
+      x <- ifelse(is.na(x), 1, x)
+      round(mean(x < .05), 3)
+    }) %>%
   rename_all(.funs = ~ gsub("p\\.value", "Type_I", .x))
 
 d.type1 %>%
   get_TypeI()
 ```
 
-These Type I error rates look OKish for the RT analysis, but clearly conservative for the analysis of accuracy. 
+These Type I error rates look OKish for the RT analysis, but clearly conservative for the analysis of accuracy. Conservative Type I error rates are not necessarily bad---in science, it's typically better to be conservative than anti-conservative. However, conservative Type I error rates can also indicate that one is (also) wasting power, and that can be problematic (in particular, for replication studies that find replication failures)!
 
-As mentioned in the footnote above, any Type I error calculation is only as good as its assumptions. In this particular case, we've made some problematic assumptions. For example, we assumed that RTs are drawn from a normal distribution, but that would predict that there can be negative RTs (the tails of a normal distribution are infinitely long). Such problematic assumptions do not *necessarily* lead to wrong estimates of the Type I error rate, but they *can*. 
+As mentioned in the footnote above, any Type I error calculation is only as good as its assumptions. In this particular case, we've made some problematic assumptions. For example, we assumed that RTs are drawn from a normal distribution, but that would predict that there can be negative RTs (the tails of a normal distribution are infinitely long). Such problematic assumptions do not *necessarily* lead to wrong estimates of the Type I error rate, but they *can* and that should worry us (see Burchill & Jaeger, 2023 for large-scale Type I error and power simulations for reading time data). 
 
 ## The consequences of making problematic assumptions about the ground truth (step (i))
-
-In this particular example, we actually *know* the ground truth. That's because the data analyzed here are actually not data from a psycholinguistic experiment. Instead, we generated them silently at the top of this document, using a lognormal (rather than normal) distribution for the RTs and a Bernoulli distribution for the accuracies (plus normally distributed individual differences across the subjects). This means that we can compare the Type I error rate of the $t$-test obtained above to the Type I error rate of the same $t$-test if the data is generated following the ground truth. 
+In this particular example, we actually *know* the ground truth. That's because the data analyzed here are actually not data from a psycholinguistic experiment. Instead, we generated them silently at the top of this document, using a lognormal (rather than normal) distribution for the RTs and a Bernoulli distribution for the accuracies (plus normally distributed individual differences across the subjects). This means that we can compare the Type I error rate of the $t$-test obtained above to the Type I error rate of the same $t$-test if the data is generated following the ground truth.
 
 The following repeats steps (ii) - (v) under the correct ground truth. For RTs, we find that we get a pretty similar Type I error rate as above, despite the fact that our assumptions have changed. For the analysis of accuracy, however, we see a substantially lower Type I error rate than the target of .05. That is, the $t$-test is actually rather conservative for this particular data set.
 
@@ -309,11 +326,10 @@ d.type1.true %>%
   get_TypeI()
 ```
 
-These results suggest that we should not use a $t$-test for the analysis of our accuracy results. Indeed, this problem of $t$-tests and ANOVA for the analysis of categorical outcomes is well-known. But even if we didn't know anything about it, the sampling-based approach has provided us with a tool to notice that something is off.
+These results suggest that we might not want to use a $t$-test for the analysis of our accuracy results. Indeed, this problem of $t$-tests and ANOVA for the analysis of categorical outcomes is well-known (see Dixon, 2008; Jaeger, 2008, both in a special issue on statistical methods in the *Journal of Memory & Language*; for sociolinguists, Johnson, 2009 in *Language Variation & Change* provides a great introduction with intuitive examples and excellent illustrations). But even if we didn't know anything about it, the sampling-based approach has provided us with a tool to notice that something might be off.
 
 ## What if we don't know the ground truth? Bootstrap!
-
-In the above example, we knew the ground truth and this let us assess whether the assumptions we made for our Type I error analysis were problematic. But that is rarely the case. How then, can we avoid problematic assumptions? While there is no magic bullet---nothing that will always work---the non-parametric bootstrap we've used above to obtain confidence intervals also allows us to get Type I error estimates, without assuming, for example, normality. Specifically, we can bootstrap from the data we have. Specifically, we can substitute steps (i) and (ii) by sampling without replacement data points from subject 2. 
+In the above example, we knew the ground truth and this let us assess whether the assumptions we made for our Type I error analysis were problematic. But that is rarely the case. How then, can we avoid problematic assumptions? While there is no magic bullet---nothing that will always work---the non-parametric bootstrap we've used above to obtain confidence intervals also allows us to get Type I error estimates, without assuming, e.g., normality. Specifically, we can bootstrap from the data we have. Specifically, we can substitute steps (i) and (ii) by sampling without replacement data points from subject 2. 
 
 ```{r, echo=TRUE}
 # A bootstrap function to generate data
@@ -329,7 +345,7 @@ bootstrap_single_subject_data = function(n.trial, d) {
 bootstrap_single_subject_data(n.trial, d.subj)
 ```
 
-Applying the same steps (iii) - (v) as above, we find that the Type I error rate of both analyses seems similar to what we obtained above:
+Applying the same steps (iii) - (v) as above, we find that the Type I error rate of both analyses seems similar to what we obtained above by generating data under the (in this case) known ground truth:
 
 ```{r}
 d.type1.boot = 
@@ -350,10 +366,11 @@ d.type1.boot %>%
   get_TypeI()
 ```
 
+This demonstrates how the bootstrap approach offers a powerful approach to Type I error (and power) analyses when the ground truth is *not* known (i.e., most of the time) and there is reason to expect that the parametric assumptions made by our analyses are problematic (which is the case for many of the outcome measures collected in the cognitive, neuro, and language sciences). See Burchill & Jaeger (2023) for an application of bootstrap resampling for Type I and II error analyses of reading time data that demonstrates when standard analysis approaches to reading times are problematic.
+
 
 ## Power
-
-To calculate power, we proceed in parallel to the approach described above for Type I error rates. For power, too, we can use parametric or non-parametric approaches. The following example shows the parametric approach to simulated the data from Subject ```r which.subj```. We can modify the function used above, so that it can accommodate both Type I error analyses (for effect = 0) and power analyses (for effects != 0). For the sake of simplicity, we focus on only RTs.
+To calculate power, we proceed in parallel to the approach described above for Type I error rates. For power, too, we can use parametric or non-parametric approaches. The following example shows the parametric approach to simulated the data from Subject ```r which.subj```. We can modify the function used above, so that it can accommodate both Type I error analyses (by setting the argument `effect = 0`) and power analyses (by setting `effect` to some value other than 0). For the sake of simplicity, we focus on only RTs.
 
 ```{r}
 # A function to parametrically generate data with an effect
@@ -383,7 +400,7 @@ Here's an example draw from this revised function, for a hypothetical (huge) dif
 make_single_subject_data(n.trial, d.pars, effect = 250)
 ```
 
-With this simple change in the data generation---i.e., step (i)---we can calculate the power for, e.g., a combination of different amounts of data (12, 24, 48, or 96 trials) and different effect sizes (25, 50, and 100 ms):
+With this simple change in the data generation---i.e., step (i)---we can calculate the power for, e.g., a combination of different amounts of data (12, 24, 48, or 96 trials) and different effect sizes (25, 50, and 100 ms).^[Notice that this output immediately shows why the assumption of normality can be problematic for RTs. RTs are always positive (aside of measurement errors) but the normal distribution has non-zero probability mass even arbitrarily far from its mean. There is thus a non-zero chance that negative RTs are generated when sampling from a normal distribution even if the mean of that distribution is much larger than zero.]
 
 ```{r, echo=TRUE}
 get_power = . %>%
@@ -391,7 +408,7 @@ get_power = . %>%
   rename_all(., .funs = ~gsub("Type_I", "Power", .x))
 
 sample_power = function(d.pars, n.trials, effects, n.samples = n.samples) {
-  d = tibble(.rows = 0)
+  d <- tibble(.rows = 0)
   for (n.trial in n.trials) {
     for (effect in effects) {
       d %<>% rbind(
@@ -439,10 +456,9 @@ temp %>%
 
 
 ### Power in grouped data
-
 The same approach can be applied to grouped data. Here is an example using a generation function that is similar to the one used to generate the (simulated) results that we introduced at the beginning of this document. We can then ask how the power of a *paired* $t$-test over the by-participant means of RTs and accuracy scales as a function of the number of trials and the number of subjects. If you are working with similar repeated-measures data, have a look at the code in the R markdown source.
 
-Note how we stand to gain much less power from increasing the number of trials per subjects, compared to increasing the number of subjects (e.g., 4 subjects with 8 trials each is the same amount of total data as 8 subjects with 4 trials each, but the latter gives us more power). Of course, this depends on the relative variability *within* vs. *between* subjects, but the scenario depicted here holds for many of our experiments.
+Note how we stand to gain much less power from increasing the number of trials per subjects, compared to increasing the number of subjects (e.g., 4 subjects with 8 trials each is the same amount of total data as 8 subjects with 4 trials each, but the latter gives us more power). Of course, this depends on the relative variability *within* vs. *between* subjects, but the scenario simulated here is typical for psycholinguistic experiments (there tends to be substantially more between-subject variability than within-subject variability).
 
 ```{r, echo=FALSE}
 make_multi_subject_data = function(n.subject, n.trial, 
@@ -485,12 +501,12 @@ do_multi_subject_test = function(data) {
   
   d = tibble(.rows = 1)
   if ("RT" %in% names(data)) {
-    t1 = t.test(RT ~ condition, data = data, var.equal = T, paired = T)
+    t1 <- t.test(RT ~ condition, data = data, var.equal = T, paired = T)
     d %<>%
       mutate(RT.p.value = t1$p.value)
   }
   if ("correct" %in% names(data)) {
-    t2 = t.test(correct ~ condition, data = data, var.equal = T, paired = T)
+    t2 <- t.test(correct ~ condition, data = data, var.equal = T, paired = T)
     d %<>%
       mutate(Accuracy.p.value = t2$p.value)
   }
@@ -499,7 +515,7 @@ do_multi_subject_test = function(data) {
 }
 
 sample_power = function(n.subjects, n.trials, n.samples = n.samples) {
-  d = tibble(.rows = 0)
+  d <- tibble(.rows = 0)
   for (n.subject in n.subjects) {
     for (n.trial in n.trials) {
       d %<>% rbind(
@@ -532,8 +548,7 @@ sample_power(n.subjects = c(4, 8, 16, 32), n.trials = c(4, 8, 16, 32),
     cols = c("RT.Power", "Accuracy.Power"),
     values_to = "Power",
     names_pattern = "(.*)\\.Power",
-    names_to = "DV"
-  ) %>%
+    names_to = "DV") %>%
   mutate(DV = factor(DV, levels = c("RT", "Accuracy"))) %>%
   ggplot(aes(x = n.subject, y = Power, color = factor(n.trial))) +
   stat_summary(fun.data = mean_cl_boot, geom = "pointrange", alpha = .5) +
@@ -548,11 +563,10 @@ sample_power(n.subjects = c(4, 8, 16, 32), n.trials = c(4, 8, 16, 32),
 ```
 
 # Researcher's degrees of freedom: a sampling-based case study
-
 Let's say we collect 30 subjects' worth of data (with 24 trials each), from the same hypothetical experiment used in the power analyses right above. We then conduct a paired $t$-test on both the RTs and the accuracy:
 
 ```{r}
-d = make_multi_subject_data(n.trial = 16, n.subject = 24) 
+d <- make_multi_subject_data(n.trial = 16, n.subject = 24) 
 
 d %>%
   do_multi_subject_test()
@@ -571,7 +585,7 @@ d %>%
 
 It seems like we were on the right track! There is indeed a significant effect of high vs. low frequency on reaction times. We decide to submit the result for publication. 
 
-Eight years later, a team of undergraduate researchers decides to replicate our study. They succeed in following the same design, procedure, etc., and sample from the same underlying population. They are weary of the small number of trials and subjects. They decided to run twice the number of trials per subject (32) and four times the number of subjects of the original study (128), for a total of *eight times the original data*. Using the same paired $t$-test approach, they find:
+Eight years later, a team of graduate researchers decides to replicate our study. They succeed in following the same design, procedure, etc., and sample from the same underlying population. They are weary of the small number of trials and subjects. They decided to run twice the number of trials per subject (32) and four times the number of subjects of the original study (128), for a total of *eight times the original data*. Using the same paired $t$-test approach, they find:
 
 ```{r}
 make_multi_subject_data(n.trial = 32, n.subject = 128) %>%
@@ -590,13 +604,13 @@ In the output, we see the $p$-values for each batch of 10 subjects, both for the
 
 ```{r}
 run_test_run_test = function(n.trial = 16, n.subject = 10, n.batch = 10) {
-  d = plyr::rdply(
+  d <- plyr::rdply(
     .n = n.batch, .id = "batch",
     make_multi_subject_data(n.trial = n.trial, n.subject = n.subject)) %>%
     group_by(batch, subject, condition) %>%
     dplyr::summarise_at(c("correct", "RT"), mean)
   
-  d.t = tibble(.rows = 0)
+  d.t <- tibble(.rows = 0)
   for (i in 1:max(d$batch)) {
     d.t %<>%
       rbind(
