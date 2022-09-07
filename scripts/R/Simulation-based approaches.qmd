@@ -42,7 +42,7 @@ library("boot")       # for automatic bootstrap
 ## Imagine *a little harder* {auto-animate="true"}
 
 ::: incremental
--   You roll the die 40 times, with the following outcome: side A occurred 26 times, side B occurred 14 times. Is the coin biased?
+-   You flip the coin 40 times, with the following outcome: side A occurred 26 times, side B occurred 14 times. Is the coin biased?
 
 -   How might you determine the answer?
 
