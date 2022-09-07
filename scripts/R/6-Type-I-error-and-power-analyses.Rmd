@@ -78,7 +78,7 @@ d = d.orig %>%
     select(-starts_with("mu"))
 ```
 
-Let's say we have an experiment with `r n.subject` subjects, in which each subject saw `r n.trial` trials for each of two conditions (for a total of `r n.trial * 2` trials per subject). On each trial, subjects saw a picture of an object and had to decide as quickly and accurately whether the picture depicts something animate (a living thing) or not. The two conditions manipulate whether the object is something that we see frequently in our live ("high frequency") or not ("low frequency"). We collected both reaction times of subjects' responses (`RT`), and whether those responses were accurate (`correct`). We hypothesize that more frequent objects will be responded to more quickly and accurately. 
+Let's say we have an experiment with `r n.subject` subjects, in which each subject saw `r n.trial` trials for each of two conditions (for a total of `r n.trial * 2` trials per subject). On each trial, subjects saw a picture of an object and had to decide as quickly and accurately whether the picture depicts something animate (a living thing) or not. The two conditions manipulate whether the object is something that we see frequently in our life ("high frequency") or not ("low frequency"). We collected both reaction times of subjects' responses (`RT`), and whether those responses were accurate (`correct`). We hypothesize that more frequent objects will be responded to more quickly and accurately. 
 
 
 # Sampling-based Type I error and power analyses 
