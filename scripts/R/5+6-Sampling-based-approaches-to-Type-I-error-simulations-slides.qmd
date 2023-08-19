@@ -1,6 +1,6 @@
 ---
-title: "BCS 519: Simulation-based approaches"
-author: Florian Jaeger
+title: "PhD Skillz: Sampling-based approaches"
+author: T. Florian Jaeger
 email: fjaeger@ur.rochester.edu
 format:
   revealjs:
@@ -380,7 +380,14 @@ get_TypeI <-
       ends_with("p.value"),
       list(
         "convergence" = ~ sum(!is.na(.x)) / length(.x),
-        "Type_I_error" = ~ round(mean(.x < .05, na.rm = T), 3)),
+        "Type_I_error" =  
+          function(x) {
+            # Here we count t-tests that yield an NA results as *not* a Type I error.
+            # This assumes an experimenter who got such a result (hopefully!) would not
+            # conclude that they found a significant effect.
+            x <- ifelse(is.na(x), 1, x)
+            round(mean(x < .05), 3)
+      }),
     .names = "{.fn}_{.col}")) %>%
   rename_all(.funs = ~ gsub("\\.p\\.value", "", .x)) %>%
   # Since we're setting analyses to NA when either of the RT
@@ -423,7 +430,7 @@ For example, we assumed that RTs are drawn from a normal distribution, but that 
 
 . . .
 
--   We can compare the Type I error rate of the $t$-test obtained above to the Type I error rate of the same $t$-test if the data is generated following the ground truth (see [Git repo](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2021-2022/scripts/R/6-Type-I-error-and-power-analyses.Rmd)).
+-   We can compare the Type I error rate of the $t$-test obtained above to the Type I error rate of the same $t$-test if the data is generated following the ground truth (see [Git repo](https://github.com/tfjaeger/BCS206-207-R-lectures/blob/2024-PhD-skillz-workshop/scripts/R/6-Type-I-error-and-power-analyses.Rmd)).
 
 ## What if we don't know the ground truth?
 
