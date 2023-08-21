@@ -1,6 +1,9 @@
 # Let's test whether the Central Limit Theorem (CLT) holds for the gamma distribution. 
 # 
 # The gamma distribution is defined only over positive numbers. It's often used, e.g., 
+library(tidyverse)
+theme_set(theme_bw())
+
 # to describe variances (which can only be positive). To get an idea of this distribution,
 # let's plot the gamma distributions with shape/location = 2 and various scales. 
 tibble(x = seq(0, 20, .05)) %>%

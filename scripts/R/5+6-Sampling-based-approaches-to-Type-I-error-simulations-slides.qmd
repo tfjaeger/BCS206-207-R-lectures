@@ -124,12 +124,33 @@ head(null_distribution, 20)
 sum(null_distribution >= 26) / sum(!is.na(null_distribution))
 ```
 
-## Using simulations to estimate the Type I error rate of an analysis
+## Using simulations to estimate the statistical power of an analysis
 
-1.  We generate data under some assumption (e.g., a Normally distributed outcome) or resample it from existing real data *without adding any differences between conditions*.
+1.  We generate data under some assumption (e.g., a Normally distributed outcome) or resample it from existing real data.
+2.  We add a non-zero effect that we want to estimate power for (e.g., by subtracting half of it from one condition and adding half of it to the other condition).
 2.  We apply whatever type(s) of analysis we're interested in estimating Type I error for
 3.  We repeat this process many times, each time storing whether the p-value(s) of interest were less than our significance criterion.
 4.  The proportion of significant results is the Type I error rate.
+
+## Using simulations to estimate *Type I error rate* of an analysis
+
+Can you guess what we'd need to add to turn this approach into a power analysis?
+
+1.  [We generate data under some assumption (e.g., a Normally distributed outcome) or resample it from existing real data.]{style="color:gray"}
+2.  [We add a non-zero effect that we want to estimate power for (e.g., by subtracting half of it from one condition and adding half of it to the other condition).]{style="color:gray"}
+2.  [We apply whatever type(s) of analysis we're interested in estimating **Type I error rate** for]{style="color: gray"}
+3.  [We repeat this process many times, each time storing whether the p-value(s) of interest were less than our significance criterion.]{style="color: gray"}
+4.  [The proportion of significant results is the **Type I error rate**.]{style="color:gray"}
+
+## Using simulations to estimate *Type I error rate* of an analysis
+
+Can you guess what we'd need to add to turn this approach into a power analysis?
+
+1.  [We generate data under some assumption (e.g., a Normally distributed outcome) or resample it from existing real data. ]{style="color:gray"} 
+2.  **We add no (or a 0) effect.**
+2.  [We apply whatever type(s) of analysis we're interested in estimating **Type I error rate** for]{style="color: gray"}
+3.  [We repeat this process many times, each time storing whether the p-value(s) of interest were less than our significance criterion.]{style="color: gray"}
+4.  [The proportion of significant results is the **Type I error rate**.]{style="color:gray"} 
 
 ## An example problem
 
