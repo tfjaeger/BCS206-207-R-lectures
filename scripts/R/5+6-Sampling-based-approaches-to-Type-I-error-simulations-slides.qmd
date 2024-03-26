@@ -499,6 +499,6 @@ Can you guess what we'd need to add to turn this approach into a power analysis?
 
 1.  [We generate data under some assumption (e.g., a Normally distributed outcome) or resample it from existing real data.]{style="color:gray"}
 2.  We add a **non-zero** effect that we want to estimate power for (e.g., by subtracting half of it from one condition and adding half of it to the other condition).
-3.  [We apply whatever type(s) of analysis we're interested in estimating ]{style="color:gray"} **power** [for]{style="color: gray"}
+3.  [We apply whatever type(s) of analysis we're interested in estimating]{style="color:gray"} **power** [for]{style="color: gray"}
 4.  [We repeat this process many times, each time storing whether the p-value(s) of interest were less than our significance criterion.]{style="color: gray"}
-5.  [The proportion of significant results is the ]{style="color:gray"} **power**.
+5.  [The proportion of significant results is the]{style="color:gray"} **power**.
